@@ -45,22 +45,17 @@ public abstract class Objective {
             accomplishedOn = 0;
         }
         setupTasks(tasks);
-        for (Task task : tasks) task.objective = this;
+        for (Task task : tasks){
+            task.objective = this;
+            sp.putLong("Objectives_" + task + "_accomplished", DateUtil.now());
+        }
     }
 
     public boolean isCompleted() {
-        for (Task task : tasks) {
-            if (!task.shouldBeIgnored() && !task.isCompleted())
-                return false;
-        }
         return true;
     }
 
     public boolean isCompleted(long trueTime) {
-        for (Task task : tasks) {
-            if (!task.shouldBeIgnored() && !task.isCompleted(trueTime))
-                return false;
-        }
         return true;
     }
 
