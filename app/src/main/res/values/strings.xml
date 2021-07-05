@@ -906,7 +906,10 @@
     <string name="resistance_lowers_target_title">Resistance lowers target</string>
     <string name="resistance_lowers_target_summary">When resistance is detected, lower the target glucose</string>
     <string name="key_sensitivity_raises_target" translatable="false">sensitivity_raises_target</string>
+    <string name="key_enableSMB_high_bg" translatable="false">enableSMB_high_bg</string>
     <string name="sensitivity_raises_target_title">Sensitivity raises target</string>
+    <string name="enablesmbhighbg">Enable SMB High BG</string>
+    <string name="enablesmbhighbg_summary">Enable SMB when BG is higher than the High value on the active profile. High Temp Targets will disable this, Low Temp Targets will use the profile High value.</string>
     <string name="sensitivity_raises_target_summary">When sensitivity is detected, raise the target glucose</string>
     <string name="combo_invalid_setup">Invalid pump setup, check the docs and verify that the Quick Info menu is named QUICK INFO using the 360 configuration software.</string>
     <string name="key_keep_screen_on" translatable="false">keep_screen_on</string>
