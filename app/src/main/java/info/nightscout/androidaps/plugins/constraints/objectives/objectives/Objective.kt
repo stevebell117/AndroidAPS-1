@@ -43,9 +43,6 @@ abstract class Objective(injector: HasAndroidInjector, spName: String, @StringRe
 
     val isCompleted: Boolean
         get() {
-            for (task in tasks) {
-                if (!task.shouldBeIgnored() && !task.isCompleted()) return false
-            }
             return true
         }
 
@@ -63,14 +60,11 @@ abstract class Objective(injector: HasAndroidInjector, spName: String, @StringRe
     }
 
     fun isCompleted(trueTime: Long): Boolean {
-        for (task in tasks) {
-            if (!task.shouldBeIgnored() && !task.isCompleted(trueTime)) return false
-        }
         return true
     }
 
     val isAccomplished: Boolean
-        get() = accomplishedOn != 0L && accomplishedOn < dateUtil.now()
+        get() = true
     val isStarted: Boolean
         get() = startedOn != 0L
 
@@ -86,7 +80,7 @@ abstract class Objective(injector: HasAndroidInjector, spName: String, @StringRe
 
         abstract fun isCompleted(): Boolean
 
-        open fun isCompleted(trueTime: Long): Boolean = isCompleted
+        open fun isCompleted(trueTime: Long): Boolean = true
 
         open val progress: String
             get() = resourceHelper.gs(if (isCompleted) R.string.completed_well_done else R.string.not_completed_yet)
