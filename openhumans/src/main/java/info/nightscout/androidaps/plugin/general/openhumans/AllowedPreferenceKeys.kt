@@ -120,6 +120,7 @@ private val allowedKeys = """
     enableSMB_with_high_temptarget
     enableSMB_always
     enableSMB_after_carbs
+    enableSMB_high_bg
     smbmaxminutes
     use_uam
     high_temptarget_raises_sensitivity

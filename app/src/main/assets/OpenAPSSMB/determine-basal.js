@@ -108,6 +108,7 @@ function enable_smb(
         return true;
     }
 
+    console.error("profile high_bg: ", profile.enableSMB_high_bg, "| high_bg: ", high_bg, "| bg: ", bg)
     // enable SMB if high bg is found
     if (profile.enableSMB_high_bg === true && high_bg !== null && bg >= high_bg) {
         console.error("Checking BG to see if High for SMB enablement.");
@@ -196,13 +197,15 @@ var determine_basal = function determine_basal(glucose_status, currenttemp, iob_
     var max_bg;
     var high_bg;
     if (typeof profile.min_bg !== 'undefined') {
-            min_bg = profile.min_bg;
+        min_bg = profile.min_bg;
     }
     if (typeof profile.max_bg !== 'undefined') {
-            max_bg = profile.max_bg;
+        max_bg = profile.max_bg;
     }
     if (typeof profile.high_bg !== 'undefined') {
-            high_bg = Math.max(profile.high_bg, min_bg);
+        high_bg = Math.max(profile.high_bg, min_bg);
+    } else {
+        high_bg = max_bg;
     }
     if (typeof profile.min_bg !== 'undefined' && typeof profile.max_bg !== 'undefined') {
         target_bg = (profile.min_bg + profile.max_bg) / 2;
