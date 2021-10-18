@@ -24,7 +24,7 @@ import info.nightscout.androidaps.plugin.general.openhumans.delegates.OHCounterD
 import info.nightscout.androidaps.plugin.general.openhumans.delegates.OHStateDelegate
 import info.nightscout.androidaps.plugin.general.openhumans.ui.OHFragment
 import info.nightscout.androidaps.plugin.general.openhumans.ui.OHLoginActivity
-import info.nightscout.androidaps.plugins.bus.RxBusWrapper
+import info.nightscout.androidaps.plugins.bus.RxBus
 import info.nightscout.androidaps.utils.resources.ResourceHelper
 import info.nightscout.androidaps.utils.sharedPreferences.SP
 import io.reactivex.disposables.CompositeDisposable
@@ -56,7 +56,7 @@ class OpenHumansUploader @Inject internal constructor(
     stateDelegate: OHStateDelegate,
     counterDelegate: OHCounterDelegate,
     appIdDelegate: OHAppIDDelegate,
-    private val rxBus: RxBusWrapper
+    private val rxBus: RxBus
 ) : PluginBase(
     PluginDescription()
         .mainType(PluginType.GENERAL)
@@ -267,7 +267,7 @@ class OpenHumansUploader @Inject internal constructor(
                 put("currentTemp", JSONObject(it.currentTempJson))
                 put("iobData", JSONObject(it.iobDataJson))
                 put("profile", JSONObject(it.profileJson))
-                put("autosensData", JSONObject(it.autosensDataJson))
+                put("autosensData", JSONObject(it.autosensDataJson ?: ""))
                 put("mealData", JSONObject(it.mealDataJson))
                 put("isMicroBolusAllowed", it.isMicroBolusAllowed)
                 put("result", JSONObject(it.resultJson))

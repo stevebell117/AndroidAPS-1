@@ -13,7 +13,7 @@ import info.nightscout.androidaps.interfaces.PluginDescription
 import info.nightscout.androidaps.interfaces.PluginType
 import info.nightscout.androidaps.logging.AAPSLogger
 import info.nightscout.androidaps.logging.LTag
-import info.nightscout.androidaps.plugins.bus.RxBusWrapper
+import info.nightscout.androidaps.plugins.bus.RxBus
 import info.nightscout.androidaps.plugins.general.overview.events.EventDismissNotification
 import info.nightscout.androidaps.plugins.general.overview.events.EventNewNotification
 import info.nightscout.androidaps.plugins.general.overview.notifications.Notification
@@ -27,7 +27,7 @@ class StorageConstraintPlugin @Inject constructor(
     injector: HasAndroidInjector,
     aapsLogger: AAPSLogger,
     resourceHelper: ResourceHelper,
-    private val rxBus: RxBusWrapper
+    private val rxBus: RxBus
 ) : PluginBase(PluginDescription()
     .mainType(PluginType.CONSTRAINTS)
     .neverVisible(true)
@@ -50,7 +50,7 @@ class StorageConstraintPlugin @Inject constructor(
         return value
     }
 
-    open fun availableInternalMemorySize(): Long {
+    fun availableInternalMemorySize(): Long {
         val path = Environment.getDataDirectory()
         val stat = StatFs(path.path)
         val blockSize = stat.blockSizeLong

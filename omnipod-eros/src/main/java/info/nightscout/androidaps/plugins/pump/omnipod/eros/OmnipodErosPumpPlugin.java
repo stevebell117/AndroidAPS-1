@@ -15,10 +15,12 @@ import androidx.annotation.Nullable;
 
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
+import org.joda.time.Instant;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -46,7 +48,7 @@ import info.nightscout.androidaps.interfaces.PumpPluginBase;
 import info.nightscout.androidaps.interfaces.PumpSync;
 import info.nightscout.androidaps.logging.AAPSLogger;
 import info.nightscout.androidaps.logging.LTag;
-import info.nightscout.androidaps.plugins.bus.RxBusWrapper;
+import info.nightscout.androidaps.plugins.bus.RxBus;
 import info.nightscout.androidaps.plugins.common.ManufacturerType;
 import info.nightscout.androidaps.plugins.general.actions.defs.CustomActionType;
 import info.nightscout.androidaps.plugins.general.overview.events.EventDismissNotification;
@@ -62,11 +64,11 @@ import info.nightscout.androidaps.plugins.pump.common.hw.rileylink.defs.RileyLin
 import info.nightscout.androidaps.plugins.pump.common.hw.rileylink.service.RileyLinkServiceData;
 import info.nightscout.androidaps.plugins.pump.common.utils.DateTimeUtil;
 import info.nightscout.androidaps.plugins.pump.omnipod.common.definition.OmnipodCommandType;
-import info.nightscout.androidaps.plugins.pump.omnipod.common.queue.command.CommandAcknowledgeAlerts;
 import info.nightscout.androidaps.plugins.pump.omnipod.common.queue.command.CommandDeactivatePod;
 import info.nightscout.androidaps.plugins.pump.omnipod.common.queue.command.CommandHandleTimeChange;
 import info.nightscout.androidaps.plugins.pump.omnipod.common.queue.command.CommandPlayTestBeep;
 import info.nightscout.androidaps.plugins.pump.omnipod.common.queue.command.CommandResumeDelivery;
+import info.nightscout.androidaps.plugins.pump.omnipod.common.queue.command.CommandSilenceAlerts;
 import info.nightscout.androidaps.plugins.pump.omnipod.common.queue.command.CommandSuspendDelivery;
 import info.nightscout.androidaps.plugins.pump.omnipod.common.queue.command.CommandUpdateAlertConfiguration;
 import info.nightscout.androidaps.plugins.pump.omnipod.eros.data.RLHistoryItemOmnipod;
@@ -78,13 +80,14 @@ import info.nightscout.androidaps.plugins.pump.omnipod.eros.driver.definition.Al
 import info.nightscout.androidaps.plugins.pump.omnipod.eros.driver.definition.AlertSet;
 import info.nightscout.androidaps.plugins.pump.omnipod.eros.driver.definition.BeepConfigType;
 import info.nightscout.androidaps.plugins.pump.omnipod.eros.driver.definition.OmnipodConstants;
-import info.nightscout.androidaps.plugins.pump.omnipod.eros.driver.manager.PodStateManager;
+import info.nightscout.androidaps.plugins.pump.omnipod.eros.driver.manager.ErosPodStateManager;
 import info.nightscout.androidaps.plugins.pump.omnipod.eros.driver.util.TimeUtil;
 import info.nightscout.androidaps.plugins.pump.omnipod.eros.event.EventOmnipodErosActiveAlertsChanged;
 import info.nightscout.androidaps.plugins.pump.omnipod.eros.event.EventOmnipodErosFaultEventChanged;
 import info.nightscout.androidaps.plugins.pump.omnipod.eros.event.EventOmnipodErosPumpValuesChanged;
 import info.nightscout.androidaps.plugins.pump.omnipod.eros.event.EventOmnipodErosTbrChanged;
 import info.nightscout.androidaps.plugins.pump.omnipod.eros.event.EventOmnipodErosUncertainTbrRecovered;
+import info.nightscout.androidaps.plugins.pump.omnipod.eros.history.ErosHistory;
 import info.nightscout.androidaps.plugins.pump.omnipod.eros.manager.AapsOmnipodErosManager;
 import info.nightscout.androidaps.plugins.pump.omnipod.eros.queue.command.CommandGetPodStatus;
 import info.nightscout.androidaps.plugins.pump.omnipod.eros.queue.command.CommandReadPulseLog;
@@ -122,16 +125,17 @@ public class OmnipodErosPumpPlugin extends PumpPluginBase implements Pump, Riley
     public static final int STARTUP_STATUS_REQUEST_TRIES = 2;
     public static final double RESERVOIR_OVER_50_UNITS_DEFAULT = 75.0;
 
-    private final PodStateManager podStateManager;
+    private final ErosPodStateManager podStateManager;
     private final RileyLinkServiceData rileyLinkServiceData;
     private final AapsOmnipodErosManager aapsOmnipodErosManager;
+    private final ErosHistory erosHistory;
     private final AapsOmnipodUtil aapsOmnipodUtil;
     private final RileyLinkUtil rileyLinkUtil;
     private final OmnipodAlertUtil omnipodAlertUtil;
     private final ProfileFunction profileFunction;
     private final AAPSLogger aapsLogger;
     private final AapsSchedulers aapsSchedulers;
-    private final RxBusWrapper rxBus;
+    private final RxBus rxBus;
     private final ActivePlugin activePlugin;
     private final Context context;
     private final FabricPrivacy fabricPrivacy;
@@ -148,6 +152,7 @@ public class OmnipodErosPumpPlugin extends PumpPluginBase implements Pump, Riley
     // variables for handling statuses and history
     private boolean firstRun = true;
     private boolean hasTimeDateOrTimeZoneChanged = false;
+    private Instant lastTimeDateOrTimeZoneUpdate = Instant.ofEpochSecond(0L);
     private final boolean displayConnectionMessages = false;
     private RileyLinkOmnipodService rileyLinkOmnipodService;
     private boolean busy = false;
@@ -163,12 +168,13 @@ public class OmnipodErosPumpPlugin extends PumpPluginBase implements Pump, Riley
             HasAndroidInjector injector,
             AAPSLogger aapsLogger,
             AapsSchedulers aapsSchedulers,
-            RxBusWrapper rxBus,
+            RxBus rxBus,
             Context context,
             ResourceHelper resourceHelper,
             ActivePlugin activePlugin,
             SP sp,
-            PodStateManager podStateManager,
+            ErosPodStateManager podStateManager,
+            ErosHistory erosHistory,
             AapsOmnipodErosManager aapsOmnipodErosManager,
             CommandQueueProvider commandQueue,
             FabricPrivacy fabricPrivacy,
@@ -201,6 +207,7 @@ public class OmnipodErosPumpPlugin extends PumpPluginBase implements Pump, Riley
         this.podStateManager = podStateManager;
         this.rileyLinkServiceData = rileyLinkServiceData;
         this.aapsOmnipodErosManager = aapsOmnipodErosManager;
+        this.erosHistory = erosHistory;
         this.aapsOmnipodUtil = aapsOmnipodUtil;
         this.rileyLinkUtil = rileyLinkUtil;
         this.omnipodAlertUtil = omnipodAlertUtil;
@@ -254,7 +261,7 @@ public class OmnipodErosPumpPlugin extends PumpPluginBase implements Pump, Riley
                     }
 
                     if (aapsOmnipodErosManager.isAutomaticallyAcknowledgeAlertsEnabled() && podStateManager.isPodActivationCompleted() && !podStateManager.isPodDead() &&
-                            podStateManager.getActiveAlerts().size() > 0 && !getCommandQueue().isCustomCommandInQueue(CommandAcknowledgeAlerts.class)) {
+                            podStateManager.getActiveAlerts().size() > 0 && !getCommandQueue().isCustomCommandInQueue(CommandSilenceAlerts.class)) {
                         queueAcknowledgeAlertsCommand();
                     }
                 } else {
@@ -413,7 +420,7 @@ public class OmnipodErosPumpPlugin extends PumpPluginBase implements Pump, Riley
                 rxBus.send(new EventNewNotification(notification));
                 pumpSync.insertAnnouncement(notificationText, null, PumpType.OMNIPOD_EROS, serialNumber());
 
-                if (aapsOmnipodErosManager.isAutomaticallyAcknowledgeAlertsEnabled() && !getCommandQueue().isCustomCommandInQueue(CommandAcknowledgeAlerts.class)) {
+                if (aapsOmnipodErosManager.isAutomaticallyAcknowledgeAlertsEnabled() && !getCommandQueue().isCustomCommandInQueue(CommandSilenceAlerts.class)) {
                     queueAcknowledgeAlertsCommand();
                 }
             }
@@ -440,7 +447,7 @@ public class OmnipodErosPumpPlugin extends PumpPluginBase implements Pump, Riley
     }
 
     private void queueAcknowledgeAlertsCommand() {
-        getCommandQueue().customCommand(new CommandAcknowledgeAlerts(), new Callback() {
+        getCommandQueue().customCommand(new CommandSilenceAlerts(), new Callback() {
             @Override public void run() {
                 if (result != null) {
                     aapsLogger.debug(LTag.PUMP, "Acknowledge alerts result: {} ({})", result.getSuccess(), result.getComment());
@@ -648,12 +655,19 @@ public class OmnipodErosPumpPlugin extends PumpPluginBase implements Pump, Riley
             return deliverBolus(detailedBolusInfo);
         } else {
             // no bolus required, carb only treatment
-//            activePlugin.getActiveTreatments().addToHistoryTreatment(detailedBolusInfo, true);
+            boolean result = pumpSync.syncCarbsWithTimestamp(
+                    detailedBolusInfo.timestamp,
+                    detailedBolusInfo.carbs,
+                    null,
+                    model(),
+                    serialNumber());
 
-//            return new PumpEnactResult(getInjector()).success(true).enacted(true).bolusDelivered(0d)
-//                    .carbsDelivered(detailedBolusInfo.carbs);
-// Needs refactor
-            throw new IllegalStateException("Not implemented");
+            aapsLogger.debug(LTag.PUMP, String.format(Locale.ENGLISH, "syncCarbsWithTimestamp " +
+                            "[date=%d, carbs=%.2f, pumpSerial=%s] - Result: %b",
+                    detailedBolusInfo.timestamp, detailedBolusInfo.carbs, serialNumber(), result));
+
+            return new PumpEnactResult(getInjector()).success(true).enacted(true).bolusDelivered(0d)
+                    .carbsDelivered(detailedBolusInfo.carbs);
         }
     }
 
@@ -829,7 +843,7 @@ public class OmnipodErosPumpPlugin extends PumpPluginBase implements Pump, Riley
 
     @Override
     public PumpEnactResult executeCustomCommand(@NonNull CustomCommand command) {
-        if (command instanceof CommandAcknowledgeAlerts) {
+        if (command instanceof CommandSilenceAlerts) {
             return executeCommand(OmnipodCommandType.ACKNOWLEDGE_ALERTS, aapsOmnipodErosManager::acknowledgeAlerts);
         }
         if (command instanceof CommandGetPodStatus) {
@@ -958,15 +972,18 @@ public class OmnipodErosPumpPlugin extends PumpPluginBase implements Pump, Riley
     public void timezoneOrDSTChanged(TimeChangeType timeChangeType) {
         aapsLogger.info(LTag.PUMP, "Time, Date and/or TimeZone changed. [changeType=" + timeChangeType.name() + ", eventHandlingEnabled=" + aapsOmnipodErosManager.isTimeChangeEventEnabled() + "]");
 
-        if (timeChangeType == TimeChangeType.TimeChanged) {
-            aapsLogger.info(LTag.PUMP, "Ignoring time change because it is not a DST or TZ change");
+        Instant now = Instant.now();
+        if (timeChangeType == TimeChangeType.TimeChanged && now.isBefore(lastTimeDateOrTimeZoneUpdate.plus(Duration.standardDays(1L)))){
+            aapsLogger.info(LTag.PUMP, "Ignoring time change because not a TZ or DST time change and the last one happened less than 24 hours ago.");
             return;
-        } else if (!podStateManager.isPodRunning()) {
+        }
+        if (!podStateManager.isPodRunning()) {
             aapsLogger.info(LTag.PUMP, "Ignoring time change because no Pod is active");
             return;
         }
 
         aapsLogger.info(LTag.PUMP, "DST and/or TimeZone changed event will be consumed by driver");
+        lastTimeDateOrTimeZoneUpdate = now;
         hasTimeDateOrTimeZoneChanged = true;
     }
 

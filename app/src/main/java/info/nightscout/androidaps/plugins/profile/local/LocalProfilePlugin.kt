@@ -17,7 +17,7 @@ import info.nightscout.androidaps.extensions.pureProfileFromJson
 import info.nightscout.androidaps.interfaces.*
 import info.nightscout.androidaps.logging.AAPSLogger
 import info.nightscout.androidaps.logging.LTag
-import info.nightscout.androidaps.plugins.bus.RxBusWrapper
+import info.nightscout.androidaps.plugins.bus.RxBus
 import info.nightscout.androidaps.plugins.profile.local.events.EventLocalProfileChanged
 import info.nightscout.androidaps.receivers.DataWorker
 import info.nightscout.androidaps.utils.DateUtil
@@ -41,7 +41,7 @@ import kotlin.collections.ArrayList
 class LocalProfilePlugin @Inject constructor(
     injector: HasAndroidInjector,
     aapsLogger: AAPSLogger,
-    private val rxBus: RxBusWrapper,
+    private val rxBus: RxBus,
     resourceHelper: ResourceHelper,
     private val sp: SP,
     private val profileFunction: ProfileFunction,
@@ -148,15 +148,17 @@ class LocalProfilePlugin @Inject constructor(
     fun storeSettings(activity: FragmentActivity? = null) {
         for (i in 0 until numOfProfiles) {
             profiles[i].run {
-                val localProfileNumbered = Constants.LOCAL_PROFILE + "_" + i + "_"
-                sp.putString(localProfileNumbered + "name", name!!)
-                sp.putBoolean(localProfileNumbered + "mgdl", mgdl)
-                sp.putDouble(localProfileNumbered + "dia", dia)
-                sp.putString(localProfileNumbered + "ic", ic.toString())
-                sp.putString(localProfileNumbered + "isf", isf.toString())
-                sp.putString(localProfileNumbered + "basal", basal.toString())
-                sp.putString(localProfileNumbered + "targetlow", targetLow.toString())
-                sp.putString(localProfileNumbered + "targethigh", targetHigh.toString())
+                name?.let { name ->
+                    val localProfileNumbered = Constants.LOCAL_PROFILE + "_" + i + "_"
+                    sp.putString(localProfileNumbered + "name", name)
+                    sp.putBoolean(localProfileNumbered + "mgdl", mgdl)
+                    sp.putDouble(localProfileNumbered + "dia", dia)
+                    sp.putString(localProfileNumbered + "ic", ic.toString())
+                    sp.putString(localProfileNumbered + "isf", isf.toString())
+                    sp.putString(localProfileNumbered + "basal", basal.toString())
+                    sp.putString(localProfileNumbered + "targetlow", targetLow.toString())
+                    sp.putString(localProfileNumbered + "targethigh", targetHigh.toString())
+                }
             }
         }
         sp.putInt(Constants.LOCAL_PROFILE + "_profiles", numOfProfiles)
@@ -420,7 +422,7 @@ class LocalProfilePlugin @Inject constructor(
 
         @Inject lateinit var injector: HasAndroidInjector
         @Inject lateinit var aapsLogger: AAPSLogger
-        @Inject lateinit var rxBus: RxBusWrapper
+        @Inject lateinit var rxBus: RxBus
         @Inject lateinit var dateUtil: DateUtil
         @Inject lateinit var dataWorker: DataWorker
         @Inject lateinit var sp: SP
