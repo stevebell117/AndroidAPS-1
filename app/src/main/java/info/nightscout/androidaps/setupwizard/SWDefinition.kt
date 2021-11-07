@@ -41,7 +41,7 @@ class SWDefinition @Inject constructor(
     injector: HasAndroidInjector,
     private val rxBus: RxBus,
     private val context: Context,
-    resourceHelper: ResourceHelper,
+    rh: ResourceHelper,
     private val sp: SP,
     private val profileFunction: ProfileFunction,
     private val localProfilePlugin: LocalProfilePlugin,
@@ -110,7 +110,7 @@ class SWDefinition @Inject constructor(
     private val screenPermissionWindow = SWScreen(injector, R.string.permission)
         .skippable(false)
         .add(SWInfoText(injector)
-            .label(resourceHelper.gs(R.string.needsystemwindowpermission)))
+            .label(rh.gs(R.string.needsystemwindowpermission)))
         .add(SWBreak(injector))
         .add(SWButton(injector)
             .text(R.string.askforpermission)
@@ -121,7 +121,7 @@ class SWDefinition @Inject constructor(
     private val screenPermissionBattery = SWScreen(injector, R.string.permission)
         .skippable(false)
         .add(SWInfoText(injector)
-            .label(resourceHelper.gs(R.string.needwhitelisting, resourceHelper.gs(R.string.app_name))))
+            .label(rh.gs(R.string.needwhitelisting, rh.gs(R.string.app_name))))
         .add(SWBreak(injector))
         .add(SWButton(injector)
             .text(R.string.askforpermission)
@@ -132,7 +132,7 @@ class SWDefinition @Inject constructor(
     private val screenPermissionBt = SWScreen(injector, R.string.permission)
         .skippable(false)
         .add(SWInfoText(injector)
-            .label(resourceHelper.gs(R.string.needlocationpermission)))
+            .label(rh.gs(R.string.needlocationpermission)))
         .add(SWBreak(injector))
         .add(SWButton(injector)
             .text(R.string.askforpermission)
@@ -143,7 +143,7 @@ class SWDefinition @Inject constructor(
     private val screenPermissionStore = SWScreen(injector, R.string.permission)
         .skippable(false)
         .add(SWInfoText(injector)
-            .label(resourceHelper.gs(R.string.needstoragepermission)))
+            .label(rh.gs(R.string.needstoragepermission)))
         .add(SWBreak(injector))
         .add(SWButton(injector)
             .text(R.string.askforpermission)
@@ -227,7 +227,7 @@ class SWDefinition @Inject constructor(
             .updateDelay(5)
             .label(R.string.treatmentssafety_maxbolus_title)
             .comment(R.string.common_values))
-        .add(SWEditNumber(injector, 48.0, 1.0, 100.0)
+        .add(SWEditIntNumber(injector, 48, 1, 100)
             .preferenceId(R.string.key_treatmentssafety_maxcarbs)
             .updateDelay(5)
             .label(R.string.treatmentssafety_maxcarbs_title)
@@ -235,7 +235,7 @@ class SWDefinition @Inject constructor(
         .validator {
             sp.contains(R.string.key_age)
                 && sp.getDouble(R.string.key_treatmentssafety_maxbolus, 0.0) > 0
-                && sp.getDouble(R.string.key_treatmentssafety_maxcarbs, 0.0) > 0
+                && sp.getInt(R.string.key_treatmentssafety_maxcarbs, 0) > 0
         }
     private val screenInsulin = SWScreen(injector, R.string.configbuilder_insulin)
         .skippable(false)
@@ -257,7 +257,7 @@ class SWDefinition @Inject constructor(
         .add(SWFragment(injector, this)
             .add(LocalProfileFragment()))
         .validator {
-            localProfilePlugin.profile?.getDefaultProfile()?.let { ProfileSealed.Pure(it).isValid("StartupWizard", activePlugin.activePump, config, resourceHelper, rxBus, hardLimits).isValid }
+            localProfilePlugin.profile?.getDefaultProfile()?.let { ProfileSealed.Pure(it).isValid("StartupWizard", activePlugin.activePump, config, rh, rxBus, hardLimits, false).isValid }
                 ?: false
         }
         .visibility { localProfilePlugin.isEnabled() }
@@ -431,9 +431,6 @@ class SWDefinition @Inject constructor(
             .add(screenNsClient)
             //.add(screenBgSource)
             .add(screenPatientName)
-            .add(screenAge)
-            .add(screenInsulin)
-            .add(screenSensitivity)
     }
 
     init {

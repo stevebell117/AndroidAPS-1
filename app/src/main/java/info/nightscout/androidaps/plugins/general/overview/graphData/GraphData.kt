@@ -32,7 +32,7 @@ class GraphData(
 
     @Inject lateinit var aapsLogger: AAPSLogger
     @Inject lateinit var profileFunction: ProfileFunction
-    @Inject lateinit var resourceHelper: ResourceHelper
+    @Inject lateinit var rh: ResourceHelper
     @Inject lateinit var defaultValueHelper: DefaultValueHelper
 
     private var maxY = Double.MIN_VALUE
@@ -66,7 +66,7 @@ class GraphData(
         addSeries(AreaGraphSeries(inRangeAreaDataPoints).also {
             it.color = 0
             it.isDrawBackground = true
-            it.backgroundColor = resourceHelper.gc(R.color.inrangebackground)
+            it.backgroundColor = rh.gc(R.color.inrangebackground)
         })
     }
 
@@ -202,7 +202,7 @@ class GraphData(
     }
 
     fun setNumVerticalLabels() {
-        graph.gridLabelRenderer.numVerticalLabels = if (units == GlucoseUnit.MGDL) (maxY / 40 + 1).toInt() else (maxY / 2 + 1).toInt()
+        graph.gridLabelRenderer.numVerticalLabels = max(3, if (units == GlucoseUnit.MGDL) (maxY / 40 + 1).toInt() else (maxY / 2 + 1).toInt())
     }
 
     fun formatAxis(fromTime: Long, endTime: Long) {

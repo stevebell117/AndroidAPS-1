@@ -8,6 +8,7 @@ import info.nightscout.androidaps.TestBaseWithProfile
 import info.nightscout.androidaps.TestPumpPlugin
 import info.nightscout.androidaps.core.R
 import info.nightscout.androidaps.data.DetailedBolusInfo
+import info.nightscout.androidaps.data.PumpEnactResult
 import info.nightscout.androidaps.database.AppRepository
 import info.nightscout.androidaps.database.ValueWrapper
 import info.nightscout.androidaps.database.entities.Bolus
@@ -52,7 +53,7 @@ class CommandQueueTest : TestBaseWithProfile() {
         aapsLogger: AAPSLogger,
         rxBus: RxBus,
         aapsSchedulers: AapsSchedulers,
-        resourceHelper: ResourceHelper,
+        rh: ResourceHelper,
         constraintChecker: ConstraintChecker,
         profileFunction: ProfileFunction,
         activePlugin: ActivePlugin,
@@ -63,7 +64,7 @@ class CommandQueueTest : TestBaseWithProfile() {
         repository: AppRepository,
         fabricPrivacy: FabricPrivacy,
         config: Config
-    ) : CommandQueue(injector, aapsLogger, rxBus, aapsSchedulers, resourceHelper, constraintChecker, profileFunction,
+    ) : CommandQueue(injector, aapsLogger, rxBus, aapsSchedulers, rh, constraintChecker, profileFunction,
                      activePlugin, context, sp, buildHelper, dateUtil, repository, fabricPrivacy, config) {
 
         override fun notifyAboutNewCommand() {}
@@ -74,7 +75,7 @@ class CommandQueueTest : TestBaseWithProfile() {
         AndroidInjector {
             if (it is Command) {
                 it.aapsLogger = aapsLogger
-                it.resourceHelper = resourceHelper
+                it.rh = rh
             }
             if (it is CommandTempBasalPercent) {
                 it.activePlugin = activePlugin
@@ -92,6 +93,9 @@ class CommandQueueTest : TestBaseWithProfile() {
             if (it is CommandLoadHistory) {
                 it.activePlugin = activePlugin
             }
+           if (it is PumpEnactResult) {
+                it.rh = rh
+            }
         }
     }
 
@@ -100,7 +104,7 @@ class CommandQueueTest : TestBaseWithProfile() {
 
     @Before
     fun prepare() {
-        commandQueue = CommandQueueMocked(injector, aapsLogger, rxBus, aapsSchedulers, resourceHelper,
+        commandQueue = CommandQueueMocked(injector, aapsLogger, rxBus, aapsSchedulers, rh,
                                           constraintChecker, profileFunction, activePlugin, context, sp,
                                          BuildHelperImpl(ConfigImpl(), fileListProvider), dateUtil, repository,
                                           fabricPrivacy, config)
@@ -129,12 +133,12 @@ class CommandQueueTest : TestBaseWithProfile() {
         `when`(constraintChecker.applyBasalConstraints(anyObject(), anyObject())).thenReturn(rateConstraint)
         val percentageConstraint = Constraint(0)
         `when`(constraintChecker.applyBasalPercentConstraints(anyObject(), anyObject())).thenReturn(percentageConstraint)
-        `when`(resourceHelper.gs(R.string.connectiontimedout)).thenReturn("Connection timed out")
+        `when`(rh.gs(R.string.connectiontimedout)).thenReturn("Connection timed out")
     }
 
     @Test
     fun commandIsPickedUp() {
-        val commandQueue = CommandQueue(injector, aapsLogger, rxBus, aapsSchedulers, resourceHelper,
+        val commandQueue = CommandQueue(injector, aapsLogger, rxBus, aapsSchedulers, rh,
                                         constraintChecker, profileFunction, activePlugin, context, sp,
                                         BuildHelperImpl(ConfigImpl(), fileListProvider), dateUtil, repository,
                                         fabricPrivacy, config)
