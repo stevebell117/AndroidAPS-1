@@ -23,7 +23,7 @@ import info.nightscout.androidaps.events.EventInitializationChanged
 import info.nightscout.androidaps.events.EventProfileSwitchChanged
 import info.nightscout.androidaps.events.EventPumpStatusChanged
 import info.nightscout.androidaps.interfaces.ActivePlugin
-import info.nightscout.androidaps.interfaces.CommandQueueProvider
+import info.nightscout.androidaps.interfaces.CommandQueue
 import info.nightscout.androidaps.interfaces.Profile
 import info.nightscout.androidaps.interfaces.ProfileFunction
 import info.nightscout.androidaps.interfaces.PumpSync
@@ -61,7 +61,7 @@ class DanaRSService : DaggerService() {
     @Inject lateinit var sp: SP
     @Inject lateinit var rh: ResourceHelper
     @Inject lateinit var profileFunction: ProfileFunction
-    @Inject lateinit var commandQueue: CommandQueueProvider
+    @Inject lateinit var commandQueue: CommandQueue
     @Inject lateinit var context: Context
     @Inject lateinit var danaRSPlugin: DanaRSPlugin
     @Inject lateinit var danaPump: DanaPump
@@ -118,6 +118,7 @@ class DanaRSService : DaggerService() {
             val pump = activePlugin.activePump
             rxBus.send(EventPumpStatusChanged(rh.gs(R.string.gettingpumpsettings)))
             sendMessage(DanaRSPacketEtcKeepConnection(injector)) // test encryption for v3 & BLE
+            if (!bleComm.isConnected) return
             sendMessage(DanaRSPacketGeneralGetShippingInformation(injector)) // serial no
             sendMessage(DanaRSPacketGeneralGetPumpCheck(injector)) // firmware
             sendMessage(DanaRSPacketBasalGetProfileNumber(injector))

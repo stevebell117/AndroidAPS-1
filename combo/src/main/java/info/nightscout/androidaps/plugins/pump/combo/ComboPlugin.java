@@ -27,7 +27,7 @@ import info.nightscout.androidaps.data.PumpEnactResult;
 import info.nightscout.androidaps.events.EventInitializationChanged;
 import info.nightscout.androidaps.events.EventRefreshOverview;
 import info.nightscout.androidaps.extensions.PumpStateExtensionKt;
-import info.nightscout.androidaps.interfaces.CommandQueueProvider;
+import info.nightscout.androidaps.interfaces.CommandQueue;
 import info.nightscout.androidaps.interfaces.Constraint;
 import info.nightscout.androidaps.interfaces.Constraints;
 import info.nightscout.androidaps.interfaces.PluginDescription;
@@ -94,7 +94,7 @@ public class ComboPlugin extends PumpPluginBase implements Pump, Constraints {
     private final ProfileFunction profileFunction;
     private final SP sp;
     private RxBus rxBus;
-    private final CommandQueueProvider commandQueue;
+    private final CommandQueue commandQueue;
     private final Context context;
     private final PumpSync pumpSync;
     private final DateUtil dateUtil;
@@ -150,7 +150,7 @@ public class ComboPlugin extends PumpPluginBase implements Pump, Constraints {
             ResourceHelper rh,
             ProfileFunction profileFunction,
             SP sp,
-            CommandQueueProvider commandQueue,
+            CommandQueue commandQueue,
             Context context,
             PumpSync pumpSync,
             DateUtil dateUtil
@@ -650,11 +650,7 @@ public class ComboPlugin extends PumpPluginBase implements Pump, Constraints {
     }
 
     private void incrementBolusCount() {
-        try {
-            sp.putLong(R.string.combo_boluses_delivered, sp.getLong(R.string.combo_boluses_delivered, 0L) + 1);
-        } catch (Exception e) {
-            // ignore
-        }
+        sp.incLong(R.string.combo_boluses_delivered);
     }
 
     public Long getTbrsSet() {
@@ -1182,7 +1178,7 @@ public class ComboPlugin extends PumpPluginBase implements Pump, Constraints {
             if (pumpSync.syncBolusWithPumpId(
                     pumpBolus.timestamp,
                     pumpBolus.amount,
-                    DetailedBolusInfo.BolusType.NORMAL,
+                    null,
                     generatePumpBolusId(pumpBolus),
                     PumpType.ACCU_CHEK_COMBO,
                     serialNumber()

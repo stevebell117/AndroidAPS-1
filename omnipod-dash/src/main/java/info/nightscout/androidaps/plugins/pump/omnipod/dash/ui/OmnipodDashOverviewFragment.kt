@@ -14,7 +14,7 @@ import info.nightscout.androidaps.Constants
 import info.nightscout.androidaps.activities.ErrorHelperActivity
 import info.nightscout.androidaps.events.EventPreferenceChange
 import info.nightscout.androidaps.events.EventPumpStatusChanged
-import info.nightscout.androidaps.interfaces.CommandQueueProvider
+import info.nightscout.androidaps.interfaces.CommandQueue
 import info.nightscout.androidaps.interfaces.PumpSync
 import info.nightscout.androidaps.plugins.bus.RxBus
 import info.nightscout.androidaps.plugins.general.overview.events.EventDismissNotification
@@ -50,6 +50,7 @@ import org.apache.commons.lang3.StringUtils
 import java.time.Duration
 import java.time.ZonedDateTime
 import java.util.*
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import kotlin.collections.ArrayList
 
@@ -59,7 +60,7 @@ class OmnipodDashOverviewFragment : DaggerFragment() {
     @Inject lateinit var fabricPrivacy: FabricPrivacy
     @Inject lateinit var rh: ResourceHelper
     @Inject lateinit var rxBus: RxBus
-    @Inject lateinit var commandQueue: CommandQueueProvider
+    @Inject lateinit var commandQueue: CommandQueue
     @Inject lateinit var omnipodDashPumpPlugin: OmnipodDashPumpPlugin
     @Inject lateinit var podStateManager: OmnipodDashPodStateManager
     @Inject lateinit var sp: SP
@@ -128,7 +129,7 @@ class OmnipodDashOverviewFragment : DaggerFragment() {
         buttonBinding.buttonRefreshStatus.setOnClickListener {
             disablePodActionButtons()
             commandQueue.readStatus(
-                "REQUESTED BY USER",
+                rh.gs(R.string.requested_by_user),
                 DisplayResultDialogCallback(
                     rh.gs(R.string.omnipod_common_error_failed_to_refresh_status),
                     false
@@ -213,6 +214,7 @@ class OmnipodDashOverviewFragment : DaggerFragment() {
         disposables += rxBus
             .toObservable(EventPumpStatusChanged::class.java)
             .observeOn(aapsSchedulers.main)
+            .delay(30, TimeUnit.MILLISECONDS, aapsSchedulers.main)
             .subscribe(
                 {
                     updateBluetoothConnectionStatus(it)
@@ -254,17 +256,18 @@ class OmnipodDashOverviewFragment : DaggerFragment() {
             ?: PLACEHOLDER
 
         val connectionSuccessPercentage = podStateManager.connectionSuccessRatio() * 100
+        val connectionAttempts = podStateManager.failedConnectionsAfterRetries + podStateManager.successfulConnectionAttemptsAfterRetries
         val successPercentageString = String.format("%.2f %%", connectionSuccessPercentage)
         val quality =
-            "${podStateManager.successfulConnections}/${podStateManager.connectionAttempts} :: $successPercentageString"
+            "${podStateManager.successfulConnectionAttemptsAfterRetries}/$connectionAttempts :: $successPercentageString"
         bluetoothStatusBinding.omnipodDashBluetoothConnectionQuality.text = quality
         val connectionStatsColor = when {
-            connectionSuccessPercentage > 90 ->
-                Color.WHITE
-            connectionSuccessPercentage > 60 ->
+            connectionSuccessPercentage < 70 && podStateManager.successfulConnectionAttemptsAfterRetries > 50 ->
+                Color.RED
+            connectionSuccessPercentage < 90 && podStateManager.successfulConnectionAttemptsAfterRetries > 50 ->
                 Color.YELLOW
             else ->
-                Color.RED
+                Color.WHITE
         }
         bluetoothStatusBinding.omnipodDashBluetoothConnectionQuality.setTextColor(connectionStatsColor)
         bluetoothStatusBinding.omnipodDashDeliveryStatus.text = podStateManager.deliveryStatus?.let {
@@ -303,12 +306,20 @@ class OmnipodDashOverviewFragment : DaggerFragment() {
                 podStateManager.bluetoothVersion.toString()
             )
 
-            // Update time on Pod
+            val timeZone = podStateManager.timeZoneId?.let { timeZoneId ->
+                podStateManager.timeZoneUpdated?.let { timeZoneUpdated ->
+                    val tz = TimeZone.getTimeZone(timeZoneId)
+                    val inDST = tz.inDaylightTime(Date(timeZoneUpdated))
+                    val locale = resources.configuration.locales.get(0)
+                    tz.getDisplayName(inDST, TimeZone.SHORT, locale)
+                } ?: PLACEHOLDER
+            } ?: PLACEHOLDER
+
             podInfoBinding.timeOnPod.text = podStateManager.time?.let {
                 rh.gs(
                     R.string.omnipod_common_time_with_timezone,
                     dateUtil.dateAndTimeString(it.toEpochSecond() * 1000),
-                    podStateManager.timeZone.getDisplayName(true, TimeZone.SHORT)
+                    timeZone
                 )
             } ?: PLACEHOLDER
 

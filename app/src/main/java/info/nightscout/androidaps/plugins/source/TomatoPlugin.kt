@@ -49,7 +49,7 @@ class TomatoPlugin @Inject constructor(
         @Inject lateinit var aapsLogger: AAPSLogger
         @Inject lateinit var sp: SP
         @Inject lateinit var repository: AppRepository
-        @Inject lateinit var broadcastToXDrip: XDripBroadcast
+        @Inject lateinit var xDripBroadcast: XDripBroadcast
 
         init {
             (context.applicationContext as HasAndroidInjector).androidInjector().inject(this)
@@ -59,7 +59,7 @@ class TomatoPlugin @Inject constructor(
         override fun doWork(): Result {
             var ret = Result.success()
 
-            if (!tomatoPlugin.isEnabled(PluginType.BGSOURCE)) return Result.success(workDataOf("Result" to "Plugin not enabled"))
+            if (!tomatoPlugin.isEnabled()) return Result.success(workDataOf("Result" to "Plugin not enabled"))
             val glucoseValues = mutableListOf<CgmSourceTransaction.TransactionGlucoseValue>()
             glucoseValues += CgmSourceTransaction.TransactionGlucoseValue(
                 timestamp = inputData.getLong("com.fanqies.tomatofn.Extras.Time", 0),
@@ -77,7 +77,7 @@ class TomatoPlugin @Inject constructor(
                 .blockingGet()
                 .also { savedValues ->
                     savedValues.inserted.forEach {
-                        broadcastToXDrip(it)
+                        xDripBroadcast.send(it)
                         aapsLogger.debug(LTag.DATABASE, "Inserted bg $it")
                     }
                 }

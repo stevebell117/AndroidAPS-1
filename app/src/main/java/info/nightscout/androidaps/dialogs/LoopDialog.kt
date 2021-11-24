@@ -56,7 +56,7 @@ class LoopDialog : DaggerDialogFragment() {
     @Inject lateinit var loopPlugin: LoopPlugin
     @Inject lateinit var activePlugin: ActivePlugin
     @Inject lateinit var constraintChecker: ConstraintChecker
-    @Inject lateinit var commandQueue: CommandQueueProvider
+    @Inject lateinit var commandQueue: CommandQueue
     @Inject lateinit var configBuilder: ConfigBuilder
     @Inject lateinit var uel: UserEntryLogger
     @Inject lateinit var dateUtil: DateUtil
@@ -190,7 +190,7 @@ class LoopDialog : DaggerDialogFragment() {
                 binding.overviewReconnect.visibility = View.VISIBLE
             }
 
-            !loopPlugin.isEnabled(PluginType.LOOP)                  -> {
+            !loopPlugin.isEnabled()                  -> {
                 binding.overviewLoop.visibility = View.VISIBLE
                 binding.overviewEnable.visibility = View.VISIBLE
                 binding.overviewDisable.visibility = View.GONE

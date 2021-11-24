@@ -51,7 +51,7 @@ class PoctechPlugin @Inject constructor(
         @Inject lateinit var poctechPlugin: PoctechPlugin
         @Inject lateinit var aapsLogger: AAPSLogger
         @Inject lateinit var repository: AppRepository
-        @Inject lateinit var broadcastToXDrip: XDripBroadcast
+        @Inject lateinit var xDripBroadcast: XDripBroadcast
 
         init {
             (context.applicationContext as HasAndroidInjector).androidInjector().inject(this)
@@ -60,7 +60,7 @@ class PoctechPlugin @Inject constructor(
         override fun doWork(): Result {
             var ret = Result.success()
 
-            if (!poctechPlugin.isEnabled(PluginType.BGSOURCE)) return Result.success(workDataOf("Result" to "Plugin not enabled"))
+            if (!poctechPlugin.isEnabled()) return Result.success(workDataOf("Result" to "Plugin not enabled"))
             aapsLogger.debug(LTag.BGSOURCE, "Received Poctech Data $inputData")
             try {
                 val glucoseValues = mutableListOf<CgmSourceTransaction.TransactionGlucoseValue>()
@@ -86,7 +86,7 @@ class PoctechPlugin @Inject constructor(
                     .blockingGet()
                     .also { savedValues ->
                         savedValues.inserted.forEach {
-                            broadcastToXDrip(it)
+                            xDripBroadcast.send(it)
                             aapsLogger.debug(LTag.DATABASE, "Inserted bg $it")
                         }
                     }

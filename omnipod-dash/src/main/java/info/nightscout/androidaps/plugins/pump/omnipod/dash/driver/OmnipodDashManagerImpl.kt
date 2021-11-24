@@ -12,8 +12,10 @@ import info.nightscout.androidaps.plugins.pump.omnipod.dash.driver.pod.definitio
 import info.nightscout.androidaps.plugins.pump.omnipod.dash.driver.pod.definition.PodConstants.Companion.POD_EXPIRATION_ALERT_HOURS
 import info.nightscout.androidaps.plugins.pump.omnipod.dash.driver.pod.definition.PodConstants.Companion.POD_EXPIRATION_ALERT_HOURS_DURATION
 import info.nightscout.androidaps.plugins.pump.omnipod.dash.driver.pod.definition.PodConstants.Companion.POD_EXPIRATION_IMMINENT_ALERT_HOURS
+import info.nightscout.androidaps.plugins.pump.omnipod.dash.driver.pod.definition.PodConstants.Companion.POD_PULSE_BOLUS_UNITS
 import info.nightscout.androidaps.plugins.pump.omnipod.dash.driver.pod.response.*
 import info.nightscout.androidaps.plugins.pump.omnipod.dash.driver.pod.state.OmnipodDashPodStateManager
+import info.nightscout.androidaps.utils.Round
 import info.nightscout.androidaps.utils.rx.AapsSchedulers
 import io.reactivex.Observable
 import io.reactivex.functions.Action
@@ -196,7 +198,7 @@ class OmnipodDashManagerImpl @Inject constructor(
                 DefaultStatusResponse::class
             )
         }.doOnComplete {
-            podStateManager.timeZone = TimeZone.getDefault()
+            podStateManager.updateTimeZone()
         }
     }
 
@@ -281,7 +283,7 @@ class OmnipodDashManagerImpl @Inject constructor(
                             .setUniqueId(podStateManager.uniqueId!!.toInt())
                             .setSequenceNumber(podStateManager.messageSequenceNumber)
                             .setNonce(NONCE)
-                            .setNumberOfUnits(podStateManager.firstPrimeBolusVolume!! * PodConstants.POD_PULSE_BOLUS_UNITS)
+                            .setNumberOfUnits(Round.roundTo(podStateManager.firstPrimeBolusVolume!! * PodConstants.POD_PULSE_BOLUS_UNITS, POD_PULSE_BOLUS_UNITS))
                             .setDelayBetweenPulsesInEighthSeconds(podStateManager.primePulseRate!!.toByte())
                             .setProgramReminder(ProgramReminder(atStart = false, atEnd = false, atInterval = 0))
                             .build(),
@@ -383,7 +385,7 @@ class OmnipodDashManagerImpl @Inject constructor(
             )
             observables.add(
                 observeSendProgramBolusCommand(
-                    podStateManager.secondPrimeBolusVolume!! * PodConstants.POD_PULSE_BOLUS_UNITS,
+                    Round.roundTo(podStateManager.secondPrimeBolusVolume!! * PodConstants.POD_PULSE_BOLUS_UNITS, PodConstants.POD_PULSE_BOLUS_UNITS),
                     podStateManager.primePulseRate!!.toByte(),
                     confirmationBeeps = false,
                     completionBeeps = false
@@ -504,12 +506,6 @@ class OmnipodDashManagerImpl @Inject constructor(
             observeConnectToPod,
             observeSendStopDeliveryCommand(StopDeliveryCommand.DeliveryType.ALL, hasBasalBeepEnabled)
         ).interceptPodEvents()
-    }
-
-    override fun setTime(): Observable<PodEvent> {
-        // TODO
-        logger.error(LTag.PUMPCOMM, "NOT IMPLEMENTED: setTime()")
-        return Observable.empty()
     }
 
     private fun observeSendProgramTempBasalCommand(rate: Double, durationInMinutes: Short, tempBasalBeeps: Boolean): Observable<PodEvent> {

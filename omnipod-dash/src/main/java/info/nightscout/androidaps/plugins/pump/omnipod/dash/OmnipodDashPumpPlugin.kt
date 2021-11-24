@@ -86,7 +86,7 @@ class OmnipodDashPumpPlugin @Inject constructor(
     injector: HasAndroidInjector,
     aapsLogger: AAPSLogger,
     rh: ResourceHelper,
-    commandQueue: CommandQueueProvider
+    commandQueue: CommandQueue
 ) : PumpPluginBase(pluginDescription, injector, aapsLogger, rh, commandQueue), Pump {
     @Volatile var bolusCanceled = false
     @Volatile var bolusDeliveryInProgress = false
@@ -197,7 +197,7 @@ class OmnipodDashPumpPlugin @Inject constructor(
             commandQueue.size() == 0 &&
             commandQueue.performing() == null
         ) {
-            commandQueue.readStatus("Unconfirmed command", null)
+            commandQueue.readStatus(rh.gs(R.string.unconfirmed_command), null)
         }
     }
 
@@ -235,7 +235,6 @@ class OmnipodDashPumpPlugin @Inject constructor(
     override fun connect(reason: String) {
         aapsLogger.info(LTag.PUMP, "connect reason=$reason")
         podStateManager.bluetoothConnectionState = OmnipodDashPodStateManager.BluetoothConnectionState.CONNECTING
-
         synchronized(this) {
             stopConnecting?.let {
                 aapsLogger.warn(LTag.PUMP, "Already connecting: $stopConnecting")
@@ -244,7 +243,6 @@ class OmnipodDashPumpPlugin @Inject constructor(
             val stop = CountDownLatch(1)
             stopConnecting = stop
         }
-
         thread(
             start = true,
             name = "ConnectionThread",
@@ -253,6 +251,9 @@ class OmnipodDashPumpPlugin @Inject constructor(
                 stopConnecting?.let {
                     val error = omnipodManager.connect(it).ignoreElements().blockingGet()
                     aapsLogger.info(LTag.PUMPCOMM, "connect error=$error")
+                    if (error == null) {
+                        podStateManager.incrementSuccessfulConnectionAttemptsAfterRetries()
+                    }
                 }
             } finally {
                 synchronized(this) {
@@ -270,6 +271,7 @@ class OmnipodDashPumpPlugin @Inject constructor(
 
     override fun stopConnecting() {
         aapsLogger.info(LTag.PUMP, "stopConnecting")
+        podStateManager.incrementFailedConnectionsAfterRetries()
         stopConnecting?.countDown()
         omnipodManager.disconnect(true)
     }
@@ -340,15 +342,16 @@ class OmnipodDashPumpPlugin @Inject constructor(
                     aapsLogger.info(LTag.PUMP, "syncBolusWithPumpId on CANCEL_BOLUS returned: $sync")
                 }
             }
-
-            podStateManager.alarmType?.let {
-                showNotification(
-                    Notification.OMNIPOD_POD_FAULT,
-                    it.toString(),
-                    Notification.URGENT,
-                    R.raw.boluserror
-                )
-                if (!podStateManager.alarmSynced) {
+            if (!podStateManager.alarmSynced) {
+                podStateManager.alarmType?.let {
+                    if (!commandQueue.isCustomCommandInQueue(CommandDeactivatePod::class.java)) {
+                        showNotification(
+                            Notification.OMNIPOD_POD_FAULT,
+                            it.toString(),
+                            Notification.URGENT,
+                            R.raw.boluserror
+                        )
+                    }
                     pumpSync.insertAnnouncement(
                         error = it.toString(),
                         pumpId = Random.Default.nextLong(),
@@ -461,16 +464,16 @@ class OmnipodDashPumpPlugin @Inject constructor(
                             R.string.key_omnipod_common_expiration_reminder_enabled
                         ) ||
                         it.isChanged(
-                            rh,
-                            R.string.key_omnipod_common_expiration_reminder_hours_before_shutdown
+                                rh,
+                                R.string.key_omnipod_common_expiration_reminder_hours_before_shutdown
                             ) ||
                         it.isChanged(
-                            rh,
-                            R.string.key_omnipod_common_low_reservoir_alert_enabled
+                                rh,
+                                R.string.key_omnipod_common_low_reservoir_alert_enabled
                             ) ||
                         it.isChanged(
-                            rh,
-                            R.string.key_omnipod_common_low_reservoir_alert_units
+                                rh,
+                                R.string.key_omnipod_common_low_reservoir_alert_units
                             )
                     ) {
                         commandQueue.customCommand(CommandUpdateAlertConfiguration(), null)
@@ -625,15 +628,20 @@ class OmnipodDashPumpPlugin @Inject constructor(
                         )
                     }
                 }
-            }.toSingleDefault(
+            }.toSingle {
                 PumpEnactResult(injector).success(true).enacted(true).bolusDelivered(deliveredBolusAmount)
+            }.onErrorReturnItem(
+                // success if canceled
+                PumpEnactResult(injector).success(bolusCanceled).enacted(false)
             )
-                .onErrorReturnItem(
-                    // success if canceled
-                    PumpEnactResult(injector).success(bolusCanceled).enacted(false)
-                )
                 .blockingGet()
-            aapsLogger.info(LTag.PUMP, "deliverTreatment result: $ret")
+            aapsLogger.info(
+                LTag.PUMP,
+                "deliverTreatment result: $ret. " +
+                    "deliveredBolusAmount=$deliveredBolusAmount. " +
+                    "ret bolus=${ret.bolusDelivered}" +
+                    "bolusCanceled=$bolusCanceled"
+            )
             return ret
         } finally {
             bolusCanceled = false
@@ -689,7 +697,7 @@ class OmnipodDashPumpPlugin @Inject constructor(
             }
             val percent = (waited.toFloat() / estimatedDeliveryTimeSeconds) * 100
             updateBolusProgressDialog(
-                rh.gs(R.string.bolusdelivering, requestedBolusAmount),
+                rh.gs(R.string.dash_bolusdelivering, requestedBolusAmount),
                 percent.toInt()
             )
         }
@@ -1186,7 +1194,7 @@ class OmnipodDashPumpPlugin @Inject constructor(
     private fun handleTimeChange(): PumpEnactResult {
         return profileFunction.getProfile()?.let {
             setNewBasalProfile(it, OmnipodCommandType.SET_TIME)
-        } ?: PumpEnactResult(injector).success(true).enacted(false).comment("No profile active")
+        } ?: PumpEnactResult(injector).success(false).enacted(false).comment("No profile active")
     }
 
     private fun updateAlertConfiguration(): PumpEnactResult {
@@ -1196,14 +1204,20 @@ class OmnipodDashPumpPlugin @Inject constructor(
         val lowReservoirAlertEnabled = sp.getBoolean(R.string.key_omnipod_common_low_reservoir_alert_enabled, true)
         val lowReservoirAlertUnits = sp.getInt(R.string.key_omnipod_common_low_reservoir_alert_units, 10)
 
-        if (podStateManager.sameAlertSettings(
+        when {
+            podStateManager.sameAlertSettings(
                 expirationReminderEnabled,
                 expirationHours,
                 lowReservoirAlertEnabled,
                 lowReservoirAlertUnits
-            )
-        ) {
-            return PumpEnactResult(injector).success(true).enacted(false)
+            ) -> {
+                aapsLogger.debug(LTag.PUMP, "Ignoring updateAlertConfiguration because the settings did not change")
+                return PumpEnactResult(injector).success(true).enacted(false)
+            }
+            !podStateManager.isPodRunning -> {
+                aapsLogger.debug(LTag.PUMP, "Ignoring updateAlertConfiguration because there is no active pod")
+                return PumpEnactResult(injector).success(true).enacted(false)
+            }
         }
 
         val podLifeLeft = Duration.between(ZonedDateTime.now(), podStateManager.expiry)

@@ -53,20 +53,6 @@ class OverviewData @Inject constructor(
     private val translator: Translator
 ) {
 
-    enum class Property {
-        TIME,
-        CALC_PROGRESS,
-        PROFILE,
-        TEMPORARY_BASAL,
-        EXTENDED_BOLUS,
-        TEMPORARY_TARGET,
-        BG,
-        IOB_COB,
-        SENSITIVITY,
-        GRAPH,
-        PUMPSTATUS
-    }
-
     var rangeToDisplay = 6 // for graph
     var toTime: Long = 0
     var fromTime: Long = 0
@@ -76,8 +62,6 @@ class OverviewData @Inject constructor(
         pumpStatus = ""
         calcProgress = ""
         lastBg = null
-        temporaryBasal = null
-        extendedBolus = null
         bolusIob = null
         basalIob = null
         cobInfo = null
@@ -97,7 +81,7 @@ class OverviewData @Inject constructor(
         iobSeries = FixedLineGraphSeries()
         absIobSeries = FixedLineGraphSeries()
         iobPredictions1Series = PointsWithLabelGraphSeries()
-        iobPredictions2Series = PointsWithLabelGraphSeries()
+        //iobPredictions2Series = PointsWithLabelGraphSeries()
         minusBgiSeries = FixedLineGraphSeries()
         minusBgiHistSeries = FixedLineGraphSeries()
         cobSeries = FixedLineGraphSeries()
@@ -161,11 +145,10 @@ class OverviewData @Inject constructor(
      * TEMPORARY BASAL
      */
 
-    var temporaryBasal: TemporaryBasal? = null
-
     val temporaryBasalText: String
         get() =
             profileFunction.getProfile()?.let { profile ->
+                var temporaryBasal = iobCobCalculator.getTempBasalIncludingConvertedExtended(dateUtil.now())
                 if (temporaryBasal?.isInProgress == false) temporaryBasal = null
                 temporaryBasal?.let { "T:" + it.toStringShort() }
                     ?: rh.gs(R.string.pump_basebasalrate, profile.getBasal())
@@ -173,7 +156,7 @@ class OverviewData @Inject constructor(
 
     val temporaryBasalDialogText: String
         get() = profileFunction.getProfile()?.let { profile ->
-            temporaryBasal?.let { temporaryBasal ->
+            iobCobCalculator.getTempBasalIncludingConvertedExtended(dateUtil.now())?.let { temporaryBasal ->
                 "${rh.gs(R.string.basebasalrate_label)}: ${rh.gs(R.string.pump_basebasalrate, profile.getBasal())}" +
                     "\n" + rh.gs(R.string.tempbasal_label) + ": " + temporaryBasal.toStringFull(profile, dateUtil)
             }
@@ -183,7 +166,7 @@ class OverviewData @Inject constructor(
     val temporaryBasalIcon: Int
         get() =
             profileFunction.getProfile()?.let { profile ->
-                temporaryBasal?.let { temporaryBasal ->
+                iobCobCalculator.getTempBasalIncludingConvertedExtended(dateUtil.now())?.let { temporaryBasal ->
                     val percentRate = temporaryBasal.convertedToPercent(dateUtil.now(), profile)
                     when {
                         percentRate > 100 -> R.drawable.ic_cp_basal_tbr_high
@@ -194,27 +177,23 @@ class OverviewData @Inject constructor(
             } ?: R.drawable.ic_cp_basal_no_tbr
 
     val temporaryBasalColor: Int
-        get() = temporaryBasal?.let { rh.gc(R.color.basal) }
+        get() = iobCobCalculator.getTempBasalIncludingConvertedExtended(dateUtil.now())?.let { rh.gc(R.color.basal) }
             ?: rh.gc(R.color.defaulttextcolor)
 
     /*
      * EXTENDED BOLUS
     */
 
-    var extendedBolus: ExtendedBolus? = null
-
     val extendedBolusText: String
         get() =
-            extendedBolus?.let { extendedBolus ->
-                if (!extendedBolus.isInProgress(dateUtil)) {
-                    this@OverviewData.extendedBolus = null
-                    ""
-                } else if (!activePlugin.activePump.isFakingTempsByExtendedBoluses) rh.gs(R.string.pump_basebasalrate, extendedBolus.rate)
+            iobCobCalculator.getExtendedBolus(dateUtil.now())?.let { extendedBolus ->
+                if (!extendedBolus.isInProgress(dateUtil)) ""
+                else if (!activePlugin.activePump.isFakingTempsByExtendedBoluses) rh.gs(R.string.pump_basebasalrate, extendedBolus.rate)
                 else ""
             } ?: ""
 
     val extendedBolusDialogText: String
-        get() = extendedBolus?.toStringFull(dateUtil) ?: ""
+        get() = iobCobCalculator.getExtendedBolus(dateUtil.now())?.toStringFull(dateUtil) ?: ""
 
     /*
      * IOB, COB
@@ -286,7 +265,7 @@ class OverviewData @Inject constructor(
     var iobSeries: FixedLineGraphSeries<ScaledDataPoint> = FixedLineGraphSeries()
     var absIobSeries: FixedLineGraphSeries<ScaledDataPoint> = FixedLineGraphSeries()
     var iobPredictions1Series: PointsWithLabelGraphSeries<DataPointWithLabelInterface> = PointsWithLabelGraphSeries()
-    var iobPredictions2Series: PointsWithLabelGraphSeries<DataPointWithLabelInterface> = PointsWithLabelGraphSeries()
+    //var iobPredictions2Series: PointsWithLabelGraphSeries<DataPointWithLabelInterface> = PointsWithLabelGraphSeries()
 
     var maxBGIValue = Double.MIN_VALUE
     val bgiScale = Scale()
@@ -555,7 +534,14 @@ class OverviewData @Inject constructor(
 
         // OfflineEvent
         repository.getOfflineEventDataFromTimeToTime(fromTime, endTime, true).blockingGet()
-            .map { TherapyEventDataPoint(TherapyEvent(timestamp = it.timestamp, duration = it.duration, type = TherapyEvent.Type.APS_OFFLINE, glucoseUnit = TherapyEvent.GlucoseUnit.MMOL), rh, profileFunction, translator) }
+            .map {
+                TherapyEventDataPoint(
+                    TherapyEvent(timestamp = it.timestamp, duration = it.duration, type = TherapyEvent.Type.APS_OFFLINE, glucoseUnit = TherapyEvent.GlucoseUnit.MMOL),
+                    rh,
+                    profileFunction,
+                    translator
+                )
+            }
             .forEach(filteredTreatments::add)
 
         // Extended bolus
@@ -660,9 +646,9 @@ class OverviewData @Inject constructor(
                     maxCobValueFound = max(maxCobValueFound, cob.toDouble())
                     lastCob = cob
                 }
-                if (autosensData.failoverToMinAbsorbtionRate) {
-                    autosensData.setScale(cobScale)
-                    autosensData.setChartTime(time)
+                if (autosensData.failOverToMinAbsorptionRate) {
+                    autosensData.scale = cobScale
+                    autosensData.chartTime = time
                     minFailOverActiveList.add(autosensData)
                 }
             }
@@ -738,6 +724,8 @@ class OverviewData @Inject constructor(
                 maxIobValueFound = max(maxIobValueFound, abs(i.iob))
             }
             iobPredictions1Series = PointsWithLabelGraphSeries(Array(iobPrediction.size) { i -> iobPrediction[i] })
+            aapsLogger.debug(LTag.AUTOSENS, "IOB prediction for AS=" + DecimalFormatter.to2Decimal(lastAutosensResult.ratio) + ": " + iobCobCalculator.iobArrayToString(iobPredictionArray))
+            /*
             val iobPrediction2: MutableList<DataPointWithLabelInterface> = java.util.ArrayList()
             val iobPredictionArray2 = iobCobCalculator.calculateIobArrayForSMB(AutosensResult(), SMBDefaults.exercise_mode, SMBDefaults.half_basal_exercise_target, isTempTarget)
             for (i in iobPredictionArray2) {
@@ -745,11 +733,11 @@ class OverviewData @Inject constructor(
                 maxIobValueFound = max(maxIobValueFound, abs(i.iob))
             }
             iobPredictions2Series = PointsWithLabelGraphSeries(Array(iobPrediction2.size) { i -> iobPrediction2[i] })
-            aapsLogger.debug(LTag.AUTOSENS, "IOB prediction for AS=" + DecimalFormatter.to2Decimal(lastAutosensResult.ratio) + ": " + iobCobCalculator.iobArrayToString(iobPredictionArray))
             aapsLogger.debug(LTag.AUTOSENS, "IOB prediction for AS=" + DecimalFormatter.to2Decimal(1.0) + ": " + iobCobCalculator.iobArrayToString(iobPredictionArray2))
+            */
         } else {
             iobPredictions1Series = PointsWithLabelGraphSeries()
-            iobPredictions2Series = PointsWithLabelGraphSeries()
+            //iobPredictions2Series = PointsWithLabelGraphSeries()
         }
 
         // COB

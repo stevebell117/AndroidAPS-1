@@ -54,7 +54,7 @@ class DiaconnG8Plugin @Inject constructor(
     private val constraintChecker: ConstraintChecker,
     private val profileFunction: ProfileFunction,
     private val sp: SP,
-    commandQueue: CommandQueueProvider,
+    commandQueue: CommandQueue,
     private val diaconnG8Pump: DiaconnG8Pump,
     private val pumpSync: PumpSync,
     private val detailedBolusInfoStorage: DetailedBolusInfoStorage,
@@ -123,7 +123,7 @@ class DiaconnG8Plugin @Inject constructor(
         mDeviceAddress = sp.getString(R.string.key_diaconn_g8_address, "")
         mDeviceName = sp.getString(R.string.key_diaconn_g8_name, "")
         diaconnG8Pump.reset()
-        commandQueue.readStatus("DeviceChanged", null)
+        commandQueue.readStatus(rh.gs(R.string.device_changed), null)
     }
 
     override fun connect(reason: String) {
@@ -291,7 +291,7 @@ class DiaconnG8Plugin @Inject constructor(
     @Synchronized
     override fun setTempBasalAbsolute(absoluteRate: Double, durationInMinutes: Int, profile: Profile, enforceNew: Boolean, tbrType: PumpSync.TemporaryBasalType): PumpEnactResult {
         val result = PumpEnactResult(injector)
-        var absoluteAfterConstrain = constraintChecker.applyBasalConstraints(Constraint(absoluteRate), profile).value()
+        val absoluteAfterConstrain = constraintChecker.applyBasalConstraints(Constraint(absoluteRate), profile).value()
         val doTempOff = baseBasalRate - absoluteAfterConstrain == 0.0
         val doLowTemp = absoluteAfterConstrain < baseBasalRate
         val doHighTemp = absoluteAfterConstrain > baseBasalRate
@@ -312,7 +312,7 @@ class DiaconnG8Plugin @Inject constructor(
 
         if (doLowTemp || doHighTemp) {
             // Check if some temp is already in progress
-            if(absoluteAfterConstrain > 6.0) absoluteAfterConstrain = 6.0  // pumpLimit
+            //if(absoluteAfterConstrain > 6.0) absoluteAfterConstrain = 6.0  // pumpLimit
             //val activeTemp = activePluginProvider.activeTreatments.getTempBasalFromHistory(System.currentTimeMillis())
             if (diaconnG8Pump.isTempBasalInProgress) {
                 aapsLogger.debug(LTag.PUMP, "setTempBasalAbsolute: currently running")
