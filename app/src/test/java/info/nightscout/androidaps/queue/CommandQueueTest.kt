@@ -39,7 +39,7 @@ import org.mockito.Mockito.`when`
 import org.mockito.Mockito.anyLong
 import java.util.*
 
-class CommandQueueImplementationTest : TestBaseWithProfile() {
+class CommandQueueTest : TestBaseWithProfile() {
 
     @Mock lateinit var constraintChecker: ConstraintChecker
     @Mock lateinit var activePlugin: ActivePlugin
@@ -64,8 +64,8 @@ class CommandQueueImplementationTest : TestBaseWithProfile() {
         repository: AppRepository,
         fabricPrivacy: FabricPrivacy,
         config: Config
-    ) : CommandQueueImplementation(injector, aapsLogger, rxBus, aapsSchedulers, rh, constraintChecker, profileFunction,
-                                   activePlugin, context, sp, buildHelper, dateUtil, repository, fabricPrivacy, config) {
+    ) : CommandQueue(injector, aapsLogger, rxBus, aapsSchedulers, rh, constraintChecker, profileFunction,
+                     activePlugin, context, sp, buildHelper, dateUtil, repository, fabricPrivacy, config) {
 
         override fun notifyAboutNewCommand() {}
 
@@ -99,7 +99,7 @@ class CommandQueueImplementationTest : TestBaseWithProfile() {
         }
     }
 
-    private lateinit var commandQueue: CommandQueueImplementation
+    private lateinit var commandQueue: CommandQueue
     private lateinit var testPumpPlugin: TestPumpPlugin
 
     @Before
@@ -138,10 +138,10 @@ class CommandQueueImplementationTest : TestBaseWithProfile() {
 
     @Test
     fun commandIsPickedUp() {
-        val commandQueue = CommandQueueImplementation(injector, aapsLogger, rxBus, aapsSchedulers, rh,
-                                                      constraintChecker, profileFunction, activePlugin, context, sp,
-                                                      BuildHelperImpl(ConfigImpl(), fileListProvider), dateUtil, repository,
-                                                      fabricPrivacy, config)
+        val commandQueue = CommandQueue(injector, aapsLogger, rxBus, aapsSchedulers, rh,
+                                        constraintChecker, profileFunction, activePlugin, context, sp,
+                                        BuildHelperImpl(ConfigImpl(), fileListProvider), dateUtil, repository,
+                                        fabricPrivacy, config)
         // start with empty queue
         Assert.assertEquals(0, commandQueue.size())
 

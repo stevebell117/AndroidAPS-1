@@ -65,7 +65,7 @@ class LocalProfileFragment : DaggerFragment() {
         override fun afterTextChanged(s: Editable) {}
         override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
         override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-            localProfilePlugin.currentProfile()?.dia = SafeParse.stringToDouble(binding.dia.text)
+            localProfilePlugin.currentProfile()?.dia = SafeParse.stringToDouble(binding.dia.text.toString())
             localProfilePlugin.currentProfile()?.name = binding.name.text.toString()
             doEdit()
         }
@@ -156,7 +156,6 @@ class LocalProfileFragment : DaggerFragment() {
                     activity?.let { activity ->
                         OKDialog.showConfirmation(activity, rh.gs(R.string.doyouwantswitchprofile), {
                             localProfilePlugin.currentProfileIndex = position
-                            localProfilePlugin.isEdited = false
                             build()
                         }, {
                             spinner?.setSelection(localProfilePlugin.currentProfileIndex)
@@ -266,7 +265,6 @@ class LocalProfileFragment : DaggerFragment() {
         val isEdited = localProfilePlugin.isEdited
         if (isValid) {
             this.view?.setBackgroundColor(rh.gc(R.color.ok_background))
-            binding.spinner.isEnabled = true
 
             if (isEdited) {
                 //edited profile -> save first
@@ -278,7 +276,6 @@ class LocalProfileFragment : DaggerFragment() {
             }
         } else {
             this.view?.setBackgroundColor(rh.gc(R.color.error_background))
-            binding.spinner.isEnabled = false
             binding.profileswitch.visibility = View.GONE
             binding.save.visibility = View.GONE //don't save an invalid profile
         }

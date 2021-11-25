@@ -33,7 +33,7 @@ class LoopPluginTest : TestBase() {
     @Mock lateinit var rh: ResourceHelper
     @Mock lateinit var profileFunction: ProfileFunction
     @Mock lateinit var context: Context
-    @Mock lateinit var commandQueue: CommandQueue
+    @Mock lateinit var commandQueue: CommandQueueProvider
     @Mock lateinit var activePlugin: ActivePlugin
     @Mock lateinit var virtualPumpPlugin: VirtualPumpPlugin
     @Mock lateinit var iobCobCalculator: IobCobCalculator
@@ -71,13 +71,13 @@ class LoopPluginTest : TestBase() {
         Assert.assertEquals(R.xml.pref_loop.toLong(), loopPlugin.preferencesId.toLong())
 
         // Plugin is disabled by default
-        Assert.assertEquals(false, loopPlugin.isEnabled())
+        Assert.assertEquals(false, loopPlugin.isEnabled(PluginType.LOOP))
         loopPlugin.setPluginEnabled(PluginType.LOOP, true)
-        Assert.assertEquals(true, loopPlugin.isEnabled())
+        Assert.assertEquals(true, loopPlugin.isEnabled(PluginType.LOOP))
 
         // No temp basal capable pump should disable plugin
         virtualPumpPlugin.pumpDescription.isTempBasalCapable = false
-        Assert.assertEquals(false, loopPlugin.isEnabled())
+        Assert.assertEquals(false, loopPlugin.isEnabled(PluginType.LOOP))
         virtualPumpPlugin.pumpDescription.isTempBasalCapable = true
 
         // Fragment is hidden by default

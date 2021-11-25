@@ -100,19 +100,19 @@ class EditQuickWizardDialog : DaggerDialogFragment(), View.OnClickListener {
 
         val toTimeSetListener = TimePickerDialog.OnTimeSetListener { _, hour, minute ->
             toSeconds = (T.hours(hour.toLong()).secs() + T.mins(minute.toLong()).secs()).toInt()
-            binding.to.text = dateUtil.timeString(dateUtil.secondsOfTheDayToMilliseconds(toSeconds))
+            binding.from.text = dateUtil.timeString(dateUtil.secondsOfTheDayToMilliseconds(toSeconds))
         }
 
         binding.to.setOnClickListener {
             context?.let {
                 TimePickerDialog(it, toTimeSetListener,
-                    T.secs(toSeconds.toLong()).hours().toInt(),
-                    T.secs((toSeconds % 3600).toLong()).mins().toInt(),
+                    T.secs(fromSeconds.toLong()).hours().toInt(),
+                    T.secs((fromSeconds % 3600).toLong()).mins().toInt(),
                     DateFormat.is24HourFormat(context)
                 ).show()
             }
         }
-        toSeconds = entry.validTo()
+        toSeconds = entry.validFrom()
         binding.to.text = dateUtil.timeString(dateUtil.secondsOfTheDayToMilliseconds(toSeconds))
 
         binding.buttonEdit.setText(entry.buttonText())

@@ -46,7 +46,7 @@ class SWDefinition @Inject constructor(
     private val profileFunction: ProfileFunction,
     private val localProfilePlugin: LocalProfilePlugin,
     private val activePlugin: ActivePlugin,
-    private val commandQueue: CommandQueue,
+    private val commandQueue: CommandQueueProvider,
     private val objectivesPlugin: ObjectivesPlugin,
     private val configBuilder: ConfigBuilder,
     private val loopPlugin: LoopPlugin,
@@ -170,7 +170,7 @@ class SWDefinition @Inject constructor(
                 configBuilder.performPluginSwitch(nsClientPlugin, true, PluginType.GENERAL)
                 rxBus.send(EventSWUpdate(true))
             }
-            .visibility { !nsClientPlugin.isEnabled() })
+            .visibility { !nsClientPlugin.isEnabled(PluginType.GENERAL) })
         .add(SWEditUrl(injector)
             .preferenceId(R.string.key_nsclientinternal_url)
             .updateDelay(5)
@@ -292,7 +292,7 @@ class SWDefinition @Inject constructor(
                 .visibility { activePlugin.activePump is OmnipodErosPumpPlugin })
         .add(SWButton(injector)
             .text(R.string.readstatus)
-            .action { commandQueue.readStatus(rh.gs(R.string.clicked_connect_to_pump), null) }
+            .action { commandQueue.readStatus("Clicked connect to pump", null) }
             .visibility {
                 // Hide for Omnipod, because as we don't require a Pod to be paired in the setup wizard,
                 // Getting the status might not be possible
@@ -343,9 +343,9 @@ class SWDefinition @Inject constructor(
                 configBuilder.performPluginSwitch(loopPlugin, true, PluginType.LOOP)
                 rxBus.send(EventSWUpdate(true))
             }
-            .visibility { !loopPlugin.isEnabled() })
-        .validator { loopPlugin.isEnabled() }
-        .visibility { !loopPlugin.isEnabled() && config.APS }
+            .visibility { !loopPlugin.isEnabled(PluginType.LOOP) })
+        .validator { loopPlugin.isEnabled(PluginType.LOOP) }
+        .visibility { !loopPlugin.isEnabled(PluginType.LOOP) && config.APS }
     private val screenSensitivity = SWScreen(injector, R.string.configbuilder_sensitivity)
         .skippable(false)
         .add(SWInfoText(injector)

@@ -146,7 +146,6 @@ data class UserEntry(
         NSClientSource,
         PocTech,
         Tomato,
-        Glunovo,
         Xdrip,
         LocalProfile,       //From LocalProfile plugin
         Loop,               //From Loop plugin

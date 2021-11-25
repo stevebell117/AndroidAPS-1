@@ -66,7 +66,7 @@ class StatusLinePlugin @Inject constructor(
         super.onStart()
         disposable += rxBus.toObservable(EventRefreshOverview::class.java)
             .observeOn(aapsSchedulers.io)
-            .subscribe({ if (lastLoopStatus != loopPlugin.isEnabled()) sendStatus() }, fabricPrivacy::logException)
+            .subscribe({ if (lastLoopStatus != loopPlugin.isEnabled(PluginType.LOOP)) sendStatus() }, fabricPrivacy::logException)
         disposable += rxBus.toObservable(EventExtendedBolusChange::class.java)
             .observeOn(aapsSchedulers.io)
             .subscribe({ sendStatus() }, fabricPrivacy::logException)
@@ -113,10 +113,10 @@ class StatusLinePlugin @Inject constructor(
 
     private fun buildStatusString(profile: Profile): String {
         var status = ""
-        if (!loopPlugin.isEnabled()) {
+        if (!loopPlugin.isEnabled(PluginType.LOOP)) {
             status += rh.gs(R.string.disabledloop) + "\n"
             lastLoopStatus = false
-        } else if (loopPlugin.isEnabled()) {
+        } else if (loopPlugin.isEnabled(PluginType.LOOP)) {
             lastLoopStatus = true
         }
         //Temp basal

@@ -84,7 +84,7 @@ class RandomBgPlugin @Inject constructor(
     }
 
     override fun specialEnableCondition(): Boolean {
-//        return isRunningTest() || virtualPumpPlugin.isEnabled() && buildHelper.isEngineeringMode()
+//        return isRunningTest() || virtualPumpPlugin.isEnabled(PluginType.PUMP) && buildHelper.isEngineeringMode()
         return true
     }
 
@@ -110,7 +110,7 @@ class RandomBgPlugin @Inject constructor(
         disposable += repository.runTransactionForResult(CgmSourceTransaction(glucoseValues, emptyList(), null))
             .subscribe({ savedValues ->
                            savedValues.inserted.forEach {
-                               xDripBroadcast.send(it)
+                               xDripBroadcast(it)
                                aapsLogger.debug(LTag.DATABASE, "Inserted bg $it")
                            }
                        }, { aapsLogger.error(LTag.DATABASE, "Error while saving values from Random plugin", it) }

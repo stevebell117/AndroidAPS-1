@@ -18,7 +18,7 @@ import info.nightscout.androidaps.utils.resources.ResourceHelper
 import info.nightscout.androidaps.utils.sharedPreferences.SP
 
 class QueueThread internal constructor(
-    private val queue: CommandQueueImplementation,
+    private val queue: CommandQueue,
     context: Context,
     private val aapsLogger: AAPSLogger,
     private val rxBus: RxBus,
@@ -46,7 +46,7 @@ class QueueThread internal constructor(
                 val secondsElapsed = (System.currentTimeMillis() - connectionStartTime) / 1000
                 val pump = activePlugin.activePump
                 if (!pump.isConnected() && secondsElapsed > Constants.PUMP_MAX_CONNECTION_TIME_IN_SECONDS) {
-                    rxBus.send(EventDismissBolusProgressIfRunning(null, null))
+                    rxBus.send(EventDismissBolusProgressIfRunning(null))
                     rxBus.send(EventPumpStatusChanged(rh.gs(R.string.connectiontimedout)))
                     aapsLogger.debug(LTag.PUMPQUEUE, "timed out")
                     pump.stopConnecting()
@@ -60,6 +60,7 @@ class QueueThread internal constructor(
                         //write time
                         sp.putLong(R.string.key_btwatchdog_lastbark, System.currentTimeMillis())
                         //toggle BT
+                        pump.stopConnecting()
                         pump.disconnect("watchdog")
                         SystemClock.sleep(1000)
                         val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
@@ -111,18 +112,14 @@ class QueueThread internal constructor(
                     // Pickup 1st command and set performing variable
                     if (queue.size() > 0) {
                         queue.pickup()
-                        val cont = queue.performing()?.let {
-                            aapsLogger.debug(LTag.PUMPQUEUE, "performing " + it.status())
+                        if (queue.performing() != null) {
+                            aapsLogger.debug(LTag.PUMPQUEUE, "performing " + queue.performing()?.status())
                             rxBus.send(EventQueueChanged())
-                            rxBus.send(EventPumpStatusChanged(it.status()))
-                            it.execute()
+                            queue.performing()?.execute()
                             queue.resetPerforming()
                             rxBus.send(EventQueueChanged())
                             lastCommandTime = System.currentTimeMillis()
                             SystemClock.sleep(100)
-                            true
-                        } ?: false
-                        if (cont) {
                             continue
                         }
                     }

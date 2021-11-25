@@ -6,5 +6,4 @@
     <!-- Omnipod Dash - Overview -->
     <!-- Omnipod Dash - Pod Activation Wizard -->
     <!-- Exceptions -->
-    <string name="dash_bolusdelivering">Доставяне %1$.2f U</string>
 </resources>

@@ -1,7 +1,6 @@
 package info.nightscout.androidaps.queue.commands
 
 import dagger.android.HasAndroidInjector
-import info.nightscout.androidaps.R
 import info.nightscout.androidaps.interfaces.Profile
 import info.nightscout.androidaps.interfaces.ActivePlugin
 import info.nightscout.androidaps.interfaces.PumpSync
@@ -31,5 +30,5 @@ class CommandTempBasalPercent(
         callback?.result(r)?.run()
     }
 
-    override fun status(): String = rh.gs(R.string.temp_basal_percent, percent, durationInMinutes)
+    override fun status(): String = "TEMP BASAL $percent% $durationInMinutes min"
 }

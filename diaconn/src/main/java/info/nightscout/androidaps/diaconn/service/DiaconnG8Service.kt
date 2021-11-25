@@ -23,7 +23,7 @@ import info.nightscout.androidaps.events.EventInitializationChanged
 import info.nightscout.androidaps.events.EventProfileSwitchChanged
 import info.nightscout.androidaps.events.EventPumpStatusChanged
 import info.nightscout.androidaps.interfaces.ActivePlugin
-import info.nightscout.androidaps.interfaces.CommandQueue
+import info.nightscout.androidaps.interfaces.CommandQueueProvider
 import info.nightscout.androidaps.interfaces.Profile
 import info.nightscout.androidaps.interfaces.ProfileFunction
 import info.nightscout.androidaps.interfaces.PumpSync
@@ -60,7 +60,7 @@ class DiaconnG8Service : DaggerService() {
     @Inject lateinit var sp: SP
     @Inject lateinit var rh: ResourceHelper
     @Inject lateinit var profileFunction: ProfileFunction
-    @Inject lateinit var commandQueue: CommandQueue
+    @Inject lateinit var commandQueue: CommandQueueProvider
     @Inject lateinit var context: Context
     @Inject lateinit var diaconnG8Plugin : DiaconnG8Plugin
     @Inject lateinit var diaconnG8Pump: DiaconnG8Pump
@@ -246,8 +246,8 @@ class DiaconnG8Service : DaggerService() {
         val apsIncarnationNum = sp.getInt(rh.gs(R.string.apsIncarnationNo), 65536)
         // aps last log num
         val pumpSerialNo      = sp.getInt(rh.gs(R.string.pumpserialno), 0)
-        var apsWrappingCount  = sp.getInt(rh.gs(R.string.apsWrappingCount), 0)
-        var apsLastLogNum     = sp.getInt(rh.gs(R.string.apslastLogNum), 0)
+        val apsWrappingCount  = sp.getInt(rh.gs(R.string.apsWrappingCount), 0)
+        val apsLastLogNum     = sp.getInt(rh.gs(R.string.apslastLogNum), 0)
 
         // if first install app
         if(apsWrappingCount == 0 && apsLastLogNum == 0 ) {
@@ -265,9 +265,6 @@ class DiaconnG8Service : DaggerService() {
             pumpLogDefaultSetting()
             sp.putInt(rh.gs(R.string.pumpserialno), diaconnG8Pump.serialNo)
         }
-
-        apsWrappingCount  = sp.getInt(rh.gs(R.string.apsWrappingCount), 0)
-        apsLastLogNum     = sp.getInt(rh.gs(R.string.apslastLogNum), 0)
 
         val apsLastNum = apsWrappingCount * 10000 + apsLastLogNum
         if((pumpWrappingCount * 10000 + pumpLastNum) < apsLastLogNum ) {

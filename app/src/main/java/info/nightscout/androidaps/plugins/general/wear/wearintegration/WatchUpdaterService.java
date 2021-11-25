@@ -42,6 +42,7 @@ import info.nightscout.androidaps.interfaces.ActivePlugin;
 import info.nightscout.androidaps.interfaces.Config;
 import info.nightscout.androidaps.interfaces.GlucoseUnit;
 import info.nightscout.androidaps.interfaces.IobCobCalculator;
+import info.nightscout.androidaps.interfaces.PluginType;
 import info.nightscout.androidaps.interfaces.Profile;
 import info.nightscout.androidaps.interfaces.ProfileFunction;
 import info.nightscout.androidaps.logging.AAPSLogger;
@@ -132,7 +133,7 @@ public class WatchUpdaterService extends WearableListenerService implements Goog
     }
 
     private boolean wearIntegration() {
-        return wearPlugin.isEnabled();
+        return wearPlugin.isEnabled(PluginType.GENERAL);
     }
 
     private void googleApiConnect() {
@@ -664,15 +665,13 @@ public class WatchUpdaterService extends WearableListenerService implements Goog
                 IobTotal bolusIob = iobCobCalculator.calculateIobFromBolus().round();
                 IobTotal basalIob = iobCobCalculator.calculateIobFromTempBasalsIncludingConvertedExtended().round();
 
-                iobSum = DecimalFormatter.INSTANCE.to2Decimal(bolusIob.getIob() + basalIob.getBasaliob());
-                iobDetail =
-                        "(" + DecimalFormatter.INSTANCE.to2Decimal(bolusIob.getIob()) + "|" + DecimalFormatter.INSTANCE.to2Decimal(basalIob.getBasaliob()) + ")";
+                iobSum = DecimalFormatter.INSTANCE.to2Decimal(bolusIob.iob + basalIob.basaliob);
+                iobDetail = "(" + DecimalFormatter.INSTANCE.to2Decimal(bolusIob.iob) + "|" + DecimalFormatter.INSTANCE.to2Decimal(basalIob.basaliob) + ")";
                 cobString = iobCobCalculator.getCobInfo(false, "WatcherUpdaterService").generateCOBString();
                 currentBasal = generateBasalString();
 
                 //bgi
-                double bgi =
-                        -(bolusIob.getActivity() + basalIob.getActivity()) * 5 * Profile.Companion.fromMgdlToUnits(profile.getIsfMgdl(), profileFunction.getUnits());
+                double bgi = -(bolusIob.activity + basalIob.activity) * 5 * Profile.Companion.fromMgdlToUnits(profile.getIsfMgdl(), profileFunction.getUnits());
                 bgiString = "" + ((bgi >= 0) ? "+" : "") + DecimalFormatter.INSTANCE.to1Decimal(bgi);
 
                 status = generateStatusString(profile, currentBasal, iobSum, iobDetail, bgiString);
@@ -741,7 +740,7 @@ public class WatchUpdaterService extends WearableListenerService implements Goog
             return status;
         }
 
-        if (!loopPlugin.isEnabled()) {
+        if (!loopPlugin.isEnabled(PluginType.LOOP)) {
             status += rh.gs(R.string.disabledloop) + "\n";
             lastLoopStatus = false;
         } else {

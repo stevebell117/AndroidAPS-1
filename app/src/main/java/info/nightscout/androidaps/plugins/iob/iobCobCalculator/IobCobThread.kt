@@ -10,6 +10,7 @@ import info.nightscout.androidaps.database.AppRepository
 import info.nightscout.androidaps.events.Event
 import info.nightscout.androidaps.events.EventAutosensCalculationFinished
 import info.nightscout.androidaps.interfaces.ActivePlugin
+import info.nightscout.androidaps.interfaces.PluginType
 import info.nightscout.androidaps.interfaces.ProfileFunction
 import info.nightscout.androidaps.logging.AAPSLogger
 import info.nightscout.androidaps.logging.LTag
@@ -203,7 +204,7 @@ class IobCobThread @Inject internal constructor(
                 if (previous != null && previous.cob > 0) {
                     // calculate sum of min carb impact from all active treatments
                     var totalMinCarbsImpact = 0.0
-                    if (sensitivityAAPSPlugin.isEnabled() || sensitivityWeightedAveragePlugin.isEnabled()) {
+                    if (sensitivityAAPSPlugin.isEnabled(PluginType.SENSITIVITY) || sensitivityWeightedAveragePlugin.isEnabled(PluginType.SENSITIVITY)) {
                         //when the impact depends on a max time, sum them up as smaller carb sizes make them smaller
                         for (ii in autosensData.activeCarbsList.indices) {
                             val c = autosensData.activeCarbsList[ii]
@@ -217,11 +218,11 @@ class IobCobThread @Inject internal constructor(
                     // figure out how many carbs that represents
                     // but always assume at least 3mg/dL/5m (default) absorption per active treatment
                     val ci = max(deviation, totalMinCarbsImpact)
-                    if (ci != deviation) autosensData.failOverToMinAbsorptionRate = true
+                    if (ci != deviation) autosensData.failoverToMinAbsorbtionRate = true
                     autosensData.absorbed = ci * profile.getIc(bgTime) / sens
                     // and add that to the running total carbsAbsorbed
                     autosensData.cob = max(previous.cob - autosensData.absorbed, 0.0)
-                    autosensData.deductAbsorbedCarbs()
+                    autosensData.substractAbosorbedCarbs()
                     autosensData.usedMinCarbsImpact = totalMinCarbsImpact
                 }
                 val isAAPSOrWeighted = sensitivityAAPSPlugin.isEnabled() || sensitivityWeightedAveragePlugin.isEnabled()

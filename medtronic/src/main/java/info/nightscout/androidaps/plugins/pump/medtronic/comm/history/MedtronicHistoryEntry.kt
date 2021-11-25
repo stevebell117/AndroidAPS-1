@@ -14,13 +14,13 @@ import info.nightscout.androidaps.plugins.pump.common.utils.StringUtil
  */
 abstract class MedtronicHistoryEntry : MedtronicHistoryEntryInterface {
 
-    var rawData: List<Byte> = listOf()
+    lateinit var rawData: List<Byte>
 
     protected var sizes = IntArray(3)
 
-    var head: ByteArray = byteArrayOf()
-    var datetime: ByteArray = byteArrayOf()
-    var body: ByteArray = byteArrayOf()
+    lateinit var head: ByteArray
+    lateinit var datetime: ByteArray
+    lateinit var body: ByteArray
 
     var id: Long = 0
 
@@ -41,13 +41,7 @@ abstract class MedtronicHistoryEntry : MedtronicHistoryEntryInterface {
     /**
      * Pump id that will be used with AAPS object (time * 1000 + historyType (max is FF = 255)
      */
-    var pumpId: Long = 0L
-        get() {
-            if (field == 0L) {
-                field = generatePumpId()
-            }
-            return field
-        }
+    open var pumpId: Long = 0L
 
     /**
      * if history object is already linked to AAPS object (either Treatment, TempBasal or TDD (tdd's
@@ -164,7 +158,7 @@ abstract class MedtronicHistoryEntry : MedtronicHistoryEntryInterface {
             sb.append("]")
             return sb.toString()
         }
-        if (head.isNotEmpty()) {
+        if (head.size != 0) {
             sb.append(", head=")
             sb.append(ByteUtil.shortHexString(head))
         }

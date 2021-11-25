@@ -50,7 +50,7 @@ public abstract class ErosPodStateManager {
     }
 
     public final void discardState() {
-        this.podState = new PodState(this.podState.address);
+        this.podState = null;
         storePodState();
     }
 

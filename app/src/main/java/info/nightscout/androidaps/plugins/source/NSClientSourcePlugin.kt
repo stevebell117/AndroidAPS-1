@@ -91,7 +91,7 @@ class NSClientSourcePlugin @Inject constructor(
         @Inject lateinit var dateUtil: DateUtil
         @Inject lateinit var dataWorker: DataWorker
         @Inject lateinit var repository: AppRepository
-        @Inject lateinit var xDripBroadcast: XDripBroadcast
+        @Inject lateinit var broadcastToXDrip: XDripBroadcast
         @Inject lateinit var dexcomPlugin: DexcomPlugin
         @Inject lateinit var nsClientPlugin: NSClientPlugin
 
@@ -116,7 +116,7 @@ class NSClientSourcePlugin @Inject constructor(
         override fun doWork(): Result {
             var ret = Result.success()
 
-            if (!nsClientSourcePlugin.isEnabled() && !sp.getBoolean(R.string.key_ns_receive_cgm, false)) return Result.success(workDataOf("Result" to "Sync not enabled"))
+            if (!nsClientSourcePlugin.isEnabled() && !sp.getBoolean(R.string.key_ns_receive_cgm, false) && !dexcomPlugin.isEnabled()) return Result.success(workDataOf("Result" to "Sync not enabled"))
 
             val sgvs = dataWorker.pickupJSONArray(inputData.getLong(DataWorker.STORE_KEY, -1))
                 ?: return Result.failure(workDataOf("Error" to "missing input data"))
@@ -148,12 +148,12 @@ class NSClientSourcePlugin @Inject constructor(
                     .blockingGet()
                     .also { result ->
                         result.updated.forEach {
-                            xDripBroadcast.send(it)
+                            broadcastToXDrip(it)
                             nsClientSourcePlugin.detectSource(it)
                             aapsLogger.debug(LTag.DATABASE, "Updated bg $it")
                         }
                         result.inserted.forEach {
-                            xDripBroadcast.send(it)
+                            broadcastToXDrip(it)
                             nsClientSourcePlugin.detectSource(it)
                             aapsLogger.debug(LTag.DATABASE, "Inserted bg $it")
                         }

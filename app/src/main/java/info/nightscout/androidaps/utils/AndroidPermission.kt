@@ -79,7 +79,7 @@ class AndroidPermission @Inject constructor(
 
     @Synchronized
     fun notifyForSMSPermissions(activity: FragmentActivity, smsCommunicatorPlugin: SmsCommunicatorPlugin) {
-        if (smsCommunicatorPlugin.isEnabled()) {
+        if (smsCommunicatorPlugin.isEnabled(PluginType.GENERAL)) {
             if (permissionNotGranted(activity, Manifest.permission.RECEIVE_SMS)) {
                 val notification = NotificationWithAction(injector, Notification.PERMISSION_SMS, rh.gs(R.string.smscommunicator_missingsmspermission), Notification.URGENT)
                 notification.action(R.string.request) {

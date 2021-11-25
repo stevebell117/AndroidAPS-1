@@ -179,7 +179,7 @@ class WizardDialog : DaggerDialogFragment() {
         // profile spinner
         binding.profile.onItemSelectedListener = object : OnItemSelectedListener {
             override fun onNothingSelected(parent: AdapterView<*>?) {
-                ToastUtils.showToastInUiThread(ctx, rh.gs(R.string.noprofileset))
+                ToastUtils.showToastInUiThread(ctx, rh.gs(R.string.noprofileselected))
                 binding.ok.visibility = View.GONE
             }
 
@@ -258,7 +258,10 @@ class WizardDialog : DaggerDialogFragment() {
 
         val units = profileFunction.getUnits()
         binding.bgunits.text = units.asText
-        binding.bgInput.step = if (units == GlucoseUnit.MGDL) 1.0 else 0.1
+        if (units == GlucoseUnit.MGDL)
+            binding.bgInput.setStep(1.0)
+        else
+            binding.bgInput.setStep(0.1)
 
         // Set BG if not old
         binding.bgInput.value = iobCobCalculator.ads.actualBg()?.valueToUnits(units) ?: 0.0

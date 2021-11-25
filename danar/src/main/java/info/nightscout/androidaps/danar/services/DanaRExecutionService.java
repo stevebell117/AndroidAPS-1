@@ -49,7 +49,7 @@ import info.nightscout.androidaps.dialogs.BolusProgressDialog;
 import info.nightscout.androidaps.events.EventInitializationChanged;
 import info.nightscout.androidaps.events.EventProfileSwitchChanged;
 import info.nightscout.androidaps.events.EventPumpStatusChanged;
-import info.nightscout.androidaps.interfaces.CommandQueue;
+import info.nightscout.androidaps.interfaces.CommandQueueProvider;
 import info.nightscout.androidaps.interfaces.ProfileFunction;
 import info.nightscout.androidaps.interfaces.PumpSync;
 import info.nightscout.androidaps.logging.AAPSLogger;
@@ -71,7 +71,7 @@ public class DanaRExecutionService extends AbstractDanaRExecutionService {
     @Inject DanaPump danaPump;
     @Inject DanaRPlugin danaRPlugin;
     @Inject DanaRKoreanPlugin danaRKoreanPlugin;
-    @Inject CommandQueue commandQueue;
+    @Inject CommandQueueProvider commandQueue;
     @Inject MessageHashTableR messageHashTableR;
     @Inject ProfileFunction profileFunction;
     @Inject PumpSync pumpSync;
@@ -356,7 +356,7 @@ public class DanaRExecutionService extends AbstractDanaRExecutionService {
                     }
                 }
             } else {
-                commandQueue.readStatus(rh.gs(R.string.bolus_ok), null);
+                commandQueue.readStatus("bolusOK", null);
             }
         }
         return !start.failed;

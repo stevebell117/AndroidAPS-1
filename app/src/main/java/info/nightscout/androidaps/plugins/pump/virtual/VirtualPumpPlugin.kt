@@ -47,7 +47,7 @@ open class VirtualPumpPlugin @Inject constructor(
     private val sp: SP,
     private val profileFunction: ProfileFunction,
     private val iobCobCalculator: IobCobCalculator,
-    commandQueue: CommandQueue,
+    commandQueue: CommandQueueProvider,
     private val pumpSync: PumpSync,
     private val config: Config,
     private val dateUtil: DateUtil

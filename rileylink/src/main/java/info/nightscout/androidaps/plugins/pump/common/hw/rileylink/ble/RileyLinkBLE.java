@@ -85,11 +85,10 @@ public class RileyLinkBLE {
                         aapsLogger.debug(LTag.PUMPBTCOMM, "Response Count is " + ByteUtil.shortHexString(characteristic.getValue()));
                     }
                 }
-                if (characteristic.getUuid().equals(UUID.fromString(GattAttributes.CHARA_RADIO_RESPONSE_COUNT))) {
-                    if (radioResponseCountNotified != null) {
-                        radioResponseCountNotified.run();
-                    }
+                if (radioResponseCountNotified != null) {
+                    radioResponseCountNotified.run();
                 }
+
                 orangeLink.onCharacteristicChanged(characteristic);
             }
 

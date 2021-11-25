@@ -10,5 +10,4 @@ interface NotificationHolder {
     var notification: Notification
 
     fun openAppIntent(context: Context): PendingIntent?
-    fun createNotificationChannel()
 }

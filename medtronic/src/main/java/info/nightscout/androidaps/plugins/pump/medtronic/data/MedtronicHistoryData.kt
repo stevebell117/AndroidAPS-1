@@ -474,7 +474,7 @@ class MedtronicHistoryData @Inject constructor(
         for (bolus in entryList) {
 
             val bolusDTO = bolus.decodedData["Object"] as BolusDTO
-            //var type: DetailedBolusInfo.BolusType = DetailedBolusInfo.BolusType.NORMAL
+            var type: DetailedBolusInfo.BolusType = DetailedBolusInfo.BolusType.NORMAL
             var multiwave = false
 
             if (bolusDTO.bolusType == PumpBolusType.Extended) {
@@ -502,31 +502,31 @@ class MedtronicHistoryData @Inject constructor(
                     temporaryId = entryWithTempId.temporaryId
                     pumpSyncStorage.removeBolusWithTemporaryId(temporaryId)
                     boluses.remove(entryWithTempId)
-                    //type = entryWithTempId.bolusType
+                    type = entryWithTempId.bolusType
                 }
             }
 
             if (temporaryId != null) {
                 val result = pumpSync.syncBolusWithTempId(
-                    timestamp = tryToGetByLocalTime(bolus.atechDateTime),
-                    amount = deliveredAmount,
-                    temporaryId = temporaryId,
-                    type = null,
-                    pumpId = bolus.pumpId,
-                    pumpType = medtronicPumpStatus.pumpType,
-                    pumpSerial = medtronicPumpStatus.serialNumber)
+                    tryToGetByLocalTime(bolus.atechDateTime),
+                    deliveredAmount,
+                    temporaryId,
+                    type,
+                    bolus.pumpId,
+                    medtronicPumpStatus.pumpType,
+                    medtronicPumpStatus.serialNumber)
 
                 aapsLogger.debug(LTag.PUMP, String.format(Locale.ENGLISH, "syncBolusWithTempId [date=%d, temporaryId=%d, pumpId=%d, insulin=%.2f, pumpSerial=%s] - Result: %b",
                     bolus.atechDateTime, temporaryId, bolus.pumpId, deliveredAmount,
                     medtronicPumpStatus.serialNumber, result))
             } else {
                 val result = pumpSync.syncBolusWithPumpId(
-                    timestamp = tryToGetByLocalTime(bolus.atechDateTime),
-                    amount = deliveredAmount,
-                    type = null,
-                    pumpId = bolus.pumpId,
-                    pumpType = medtronicPumpStatus.pumpType,
-                    pumpSerial = medtronicPumpStatus.serialNumber)
+                    tryToGetByLocalTime(bolus.atechDateTime),
+                    deliveredAmount,
+                    type,
+                    bolus.pumpId,
+                    medtronicPumpStatus.pumpType,
+                    medtronicPumpStatus.serialNumber)
 
                 aapsLogger.debug(LTag.PUMP, String.format(Locale.ENGLISH, "syncBolusWithPumpId [date=%d, pumpId=%d, insulin=%.2f, pumpSerial=%s] - Result: %b",
                     bolus.atechDateTime, bolus.pumpId, deliveredAmount,
@@ -571,42 +571,62 @@ class MedtronicHistoryData @Inject constructor(
     private fun processTBREntries(entryList: MutableList<PumpHistoryEntry>) {
         entryList.reverse()
         val tbr = entryList[0].getDecodedDataEntry("Object") as TempBasalPair
-//        var readOldItem = false
-
-        val oneMoreEntryFromHistory = getOneMoreEntryFromHistory(PumpHistoryEntryType.TempBasalCombined)
-
-        if (tbr.isCancelTBR) { // if we have cancel we need to limit previous TBR with this cancel
+        var readOldItem = false
+        if (tbr.isCancelTBR) {
+            val oneMoreEntryFromHistory = getOneMoreEntryFromHistory(PumpHistoryEntryType.TempBasalCombined)
             if (oneMoreEntryFromHistory != null) {
                 entryList.add(0, oneMoreEntryFromHistory)
+                readOldItem = true
             } else {
                 entryList.removeAt(0)
-            }
-        } else {
-            if (oneMoreEntryFromHistory != null) {
-                val tbrPrev = oneMoreEntryFromHistory.getDecodedDataEntry("Object") as TempBasalPair
-                if (tbrPrev.isZeroTBR) {  // if we had Zero TBR in last previous TBR, then we need to limit it, so we need to process it too
-                    entryList.add(0, oneMoreEntryFromHistory)
-                }
             }
         }
 
         val tbrRecords = pumpSyncStorage.getTBRs()
-
-        val processList: MutableList<TempBasalProcessDTO> = createTBRProcessList(entryList)
-
+        aapsLogger.debug(LTag.PUMP, String.format(Locale.ENGLISH, ProcessHistoryRecord.TBR.description + " List (before filter): %s, FromDb=%s", gson.toJson(entryList),
+            tbrRecords))
+        var processDTO: TempBasalProcessDTO? = null
+        val processList: MutableList<TempBasalProcessDTO> = mutableListOf()
+        for (treatment in entryList) {
+            val tbr2 = treatment.getDecodedDataEntry("Object") as TempBasalPair
+            if (tbr2.isCancelTBR) {
+                if (processDTO != null) {
+                    processDTO.itemTwo = treatment
+                    processDTO.cancelPresent = true
+                    if (readOldItem) {
+                        processDTO.processOperation = TempBasalProcessDTO.Operation.Edit
+                        readOldItem = false
+                    }
+                } else {
+                    aapsLogger.warn(LTag.PUMP, "processDTO was null - shouldn't happen, ignoring item. ItemTwo=$treatment")
+                }
+            } else {
+                if (processDTO != null) {
+                    processList.add(processDTO)
+                }
+                processDTO = TempBasalProcessDTO(
+                    itemOne = treatment,
+                    processOperation = TempBasalProcessDTO.Operation.Add,
+                    aapsLogger = aapsLogger,
+                    objectType = TempBasalProcessDTO.ObjectType.TemporaryBasal
+                )
+            }
+        }
+        if (processDTO != null) {
+            processList.add(processDTO)
+        }
         if (processList.isNotEmpty()) {
             for (tempBasalProcessDTO in processList) {
 
-                aapsLogger.debug(LTag.PUMP, "DD: tempBasalProcessDTO: " + tempBasalProcessDTO.toTreatmentString())
-                //aapsLogger.debug(LTag.PUMP, "DD: tempBasalProcessDTO.itemOne: " + gson.toJson(tempBasalProcessDTO.itemOne))
-                //aapsLogger.debug(LTag.PUMP, "DD: tempBasalProcessDTO.itemTwo: " + (if (tempBasalProcessDTO.itemTwo == null) "null" else gson.toJson(tempBasalProcessDTO.itemTwo!!)))
+                aapsLogger.debug(LTag.PUMP, "DD: tempBasalProcessDTO.itemOne: " + gson.toJson(tempBasalProcessDTO.itemOne))
+                aapsLogger.debug(LTag.PUMP, "DD: tempBasalProcessDTO.itemTwo: " + (if (tempBasalProcessDTO.itemTwo == null) "null" else gson.toJson(tempBasalProcessDTO.itemTwo!!)))
 
                 @Suppress("Unchecked_Cast")
                 val entryWithTempId = findDbEntry(tempBasalProcessDTO.itemOne, tbrRecords  as MutableList<PumpDbEntry>) as PumpDbEntryTBR?
 
                 aapsLogger.debug(LTag.PUMP, "DD: entryWithTempId: " + (entryWithTempId?.toString() ?: "null"))
 
-                val tbrEntry = tempBasalProcessDTO.itemOneTbr
+                val tbrEntry = tempBasalProcessDTO.itemOneTbr //.getDecodedDataEntry("Object") as TempBasalPair
 
                 aapsLogger.debug(LTag.PUMP, String.format("DD: tbrEntry=%s, tempBasalProcessDTO=%s", gson.toJson(tbrEntry), gson.toJson(tempBasalProcessDTO)))
 
@@ -629,7 +649,7 @@ class MedtronicHistoryData @Inject constructor(
                             tryToGetByLocalTime(tempBasalProcessDTO.atechDateTime),
                             tbrEntry.insulinRate,
                             tempBasalProcessDTO.durationAsSeconds * 1000L,
-                            isAbsolute = !tbrEntry.isPercent,
+                            !tbrEntry.isPercent,
                             entryWithTempId.temporaryId,
                             PumpSync.TemporaryBasalType.NORMAL,
                             tempBasalProcessDTO.pumpId,
@@ -685,10 +705,10 @@ class MedtronicHistoryData @Inject constructor(
                                     date = tryToGetByLocalTime(tempBasalProcessDTO.atechDateTime),
                                     pumpType = medtronicPumpStatus.pumpType,
                                     serialNumber = medtronicPumpStatus.serialNumber,
-                                    rate = tbrEntry.insulinRate,
-                                    isAbsolute = !tbrEntry.isPercent,
-                                    durationInSeconds = tempBasalProcessDTO.durationAsSeconds,
-                                    tbrType = PumpSync.TemporaryBasalType.NORMAL,
+                                    entry = PumpDbEntryTBR(rate = tbrEntry.insulinRate,
+                                        isAbsolute = !tbrEntry.isPercent,
+                                        durationInSeconds = tempBasalProcessDTO.durationAsSeconds,
+                                        tbrType = PumpSync.TemporaryBasalType.NORMAL),
                                     pumpId = tempBasalProcessDTO.pumpId)
                             }
                         }
@@ -700,56 +720,6 @@ class MedtronicHistoryData @Inject constructor(
         } // collection
     }
 
-    fun createTBRProcessList(entryList: MutableList<PumpHistoryEntry>) : MutableList<TempBasalProcessDTO> {
-
-        aapsLogger.debug(LTag.PUMP, "${ProcessHistoryRecord.TBR.description}  List (before filter): ${gson.toJson(entryList)}")
-
-        var processDTO: TempBasalProcessDTO? = null
-        val processList: MutableList<TempBasalProcessDTO> = mutableListOf()
-        for (treatment in entryList) {
-            val tbr2 = treatment.getDecodedDataEntry("Object") as TempBasalPair
-            if (tbr2.isCancelTBR) {
-                if (processDTO != null) {
-                    processDTO.itemTwo = treatment
-                } else {
-                    aapsLogger.warn(LTag.PUMP, "processDTO was null - shouldn't happen, ignoring item. ItemTwo=$treatment")
-                }
-            } else {
-                if (processDTO != null) {
-                    processList.add(processDTO)
-                }
-                processDTO = TempBasalProcessDTO(
-                    itemOne = treatment,
-                    aapsLogger = aapsLogger,
-                    objectType = TempBasalProcessDTO.ObjectType.TemporaryBasal
-                )
-            }
-        }
-        if (processDTO != null) {
-            processList.add(processDTO)
-        }
-
-        var previousItem: TempBasalProcessDTO? = null
-
-        // fix for Zero TBRs
-        for (tempBasalProcessDTO in processList) {
-            if (previousItem!=null) {
-
-                val pheEnd = PumpHistoryEntry()
-                pheEnd.atechDateTime = DateTimeUtil.getATDWithAddedSeconds(tempBasalProcessDTO.itemOne.atechDateTime, -2)
-                pheEnd.addDecodedData("Object", TempBasalPair(0.0, false, 0))
-
-                previousItem.itemTwo = pheEnd
-
-                previousItem = null
-            }
-            if (tempBasalProcessDTO.itemOneTbr!!.isZeroTBR) {
-                previousItem = tempBasalProcessDTO
-            }
-        }
-
-        return processList
-    }
 
 
     fun isTBRActive(dbEntry: PumpDbEntryTBR): Boolean {
@@ -911,6 +881,7 @@ class MedtronicHistoryData @Inject constructor(
                 while (i < filtered2Items.size) {
                     val tbrProcess = TempBasalProcessDTO(
                         itemOne = filtered2Items[i],
+                        processOperation = TempBasalProcessDTO.Operation.Add,
                         aapsLogger = aapsLogger,
                         objectType = TempBasalProcessDTO.ObjectType.Suspend)
 
@@ -988,6 +959,7 @@ class MedtronicHistoryData @Inject constructor(
         if (items.size > 0) {
             val tbrProcess = TempBasalProcessDTO(
                 itemOne = items[items.size - 1],
+                processOperation = TempBasalProcessDTO.Operation.Add,
                 aapsLogger = aapsLogger,
                 objectType = TempBasalProcessDTO.ObjectType.Suspend)
 
@@ -1003,6 +975,7 @@ class MedtronicHistoryData @Inject constructor(
         if (items.size > 0) {
             val tbrProcess = TempBasalProcessDTO(
                 itemOne = items[0],
+                processOperation = TempBasalProcessDTO.Operation.Add,
                 aapsLogger = aapsLogger,
                 objectType = TempBasalProcessDTO.ObjectType.Suspend)
 

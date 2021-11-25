@@ -149,14 +149,11 @@ class TreatmentsProfileSwitchFragment : DaggerFragment() {
     override fun onResume() {
         super.onResume()
         swapAdapter()
-        disposable += rxBus
+        disposable.add(rxBus
             .toObservable(EventProfileSwitchChanged::class.java)
             .observeOn(aapsSchedulers.main)
             .subscribe({ swapAdapter() }, fabricPrivacy::logException)
-        disposable += rxBus
-            .toObservable(EventEffectiveProfileSwitchChanged::class.java)
-            .observeOn(aapsSchedulers.main)
-            .subscribe({ swapAdapter() }, fabricPrivacy::logException)
+        )
     }
 
     @Synchronized

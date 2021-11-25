@@ -37,15 +37,7 @@ class PumpSyncImplementation @Inject constructor(
 
     private val disposable = CompositeDisposable()
 
-    override fun connectNewPump(endRunning: Boolean) {
-        if (endRunning) {
-            expectedPumpState().temporaryBasal?.let {
-                syncStopTemporaryBasalWithPumpId(dateUtil.now(), dateUtil.now(), it.pumpType, it.pumpSerial)
-            }
-            expectedPumpState().extendedBolus?.let {
-                syncStopExtendedBolusWithPumpId(dateUtil.now(), dateUtil.now(), it.pumpType, it.pumpSerial)
-            }
-        }
+    override fun connectNewPump() {
         sp.remove(R.string.key_active_pump_type)
         sp.remove(R.string.key_active_pump_serial_number)
         sp.remove(R.string.key_active_pump_change_timestamp)
@@ -85,7 +77,7 @@ class PumpSyncImplementation @Inject constructor(
     }
 
     override fun expectedPumpState(): PumpSync.PumpState {
-        val bolus = repository.getLastBolusRecordWrapped().blockingGet()
+        val bolus = repository.getLastBolusRecordWrapped().blockingGet();
         val temporaryBasal = repository.getTemporaryBasalActiveAt(dateUtil.now()).blockingGet()
         val extendedBolus = repository.getExtendedBolusActiveAt(dateUtil.now()).blockingGet()
 
@@ -99,9 +91,7 @@ class PumpSyncImplementation @Inject constructor(
                     rate = temporaryBasal.value.rate,
                     isAbsolute = temporaryBasal.value.isAbsolute,
                     type = PumpSync.TemporaryBasalType.fromDbType(temporaryBasal.value.type),
-                    pumpId = temporaryBasal.value.interfaceIDs.pumpId,
-                    pumpType = temporaryBasal.value.interfaceIDs.pumpType?.let { PumpType.fromDbPumpType(it)} ?: PumpType.USER,
-                    pumpSerial = temporaryBasal.value.interfaceIDs.pumpSerial ?: "",
+                    pumpId = temporaryBasal.value.interfaceIDs.pumpId
                 )
             else null,
             extendedBolus =
@@ -110,9 +100,7 @@ class PumpSyncImplementation @Inject constructor(
                     timestamp = extendedBolus.value.timestamp,
                     duration = extendedBolus.value.duration,
                     amount = extendedBolus.value.amount,
-                    rate = extendedBolus.value.rate,
-                    pumpType = extendedBolus.value.interfaceIDs.pumpType?.let { PumpType.fromDbPumpType(it)} ?: PumpType.USER,
-                    pumpSerial = extendedBolus.value.interfaceIDs.pumpSerial ?: ""
+                    rate = extendedBolus.value.rate
                 )
             else null,
             bolus =

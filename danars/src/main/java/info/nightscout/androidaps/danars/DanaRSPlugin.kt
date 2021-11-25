@@ -57,7 +57,7 @@ class DanaRSPlugin @Inject constructor(
     private val constraintChecker: ConstraintChecker,
     private val profileFunction: ProfileFunction,
     private val sp: SP,
-    commandQueue: CommandQueue,
+    commandQueue: CommandQueueProvider,
     private val danaPump: DanaPump,
     private val pumpSync: PumpSync,
     private val detailedBolusInfoStorage: DetailedBolusInfoStorage,
@@ -81,8 +81,7 @@ class DanaRSPlugin @Inject constructor(
     private var danaRSService: DanaRSService? = null
     private var mDeviceAddress = ""
     var mDeviceName = ""
-    override val pumpDescription
-        get() = PumpDescription(danaPump.pumpType())
+    override val pumpDescription = PumpDescription(PumpType.DANA_RS)
 
     override fun updatePreferenceSummary(pref: Preference) {
         super.updatePreferenceSummary(pref)
@@ -139,7 +138,7 @@ class DanaRSPlugin @Inject constructor(
         mDeviceAddress = sp.getString(R.string.key_danars_address, "")
         mDeviceName = sp.getString(R.string.key_danars_name, "")
         danaPump.reset()
-        commandQueue.readStatus(rh.gs(R.string.device_changed), null)
+        commandQueue.readStatus("DeviceChanged", null)
     }
 
     override fun connect(reason: String) {
@@ -465,7 +464,7 @@ class DanaRSPlugin @Inject constructor(
         result.enacted = false
         result.success = false
         result.comment = rh.gs(R.string.danar_valuenotsetproperly)
-        aapsLogger.error("setHighTempBasalPercent: Failed to set temp basal. connectionOK: $connectionOK isTempBasalInProgress: ${danaPump.isTempBasalInProgress} tempBasalPercent: ${danaPump.tempBasalPercent}")
+        aapsLogger.error("setHighTempBasalPercent: Failed to set temp basal")
         return result
     }
 
@@ -625,6 +624,5 @@ class DanaRSPlugin @Inject constructor(
         sp.remove(rh.gs(R.string.key_danars_v3_randompairingkey) + mDeviceName)
         sp.remove(rh.gs(R.string.key_danars_v3_pairingkey) + mDeviceName)
         sp.remove(rh.gs(R.string.key_danars_v3_randomsynckey) + mDeviceName)
-        sp.remove(rh.gs(R.string.key_dana_ble5_pairingkey) + mDeviceName)
     }
 }

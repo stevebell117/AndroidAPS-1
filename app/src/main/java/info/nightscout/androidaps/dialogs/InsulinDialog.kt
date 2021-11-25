@@ -44,7 +44,7 @@ class InsulinDialog : DialogFragmentWithDate() {
     @Inject lateinit var rh: ResourceHelper
     @Inject lateinit var defaultValueHelper: DefaultValueHelper
     @Inject lateinit var profileFunction: ProfileFunction
-    @Inject lateinit var commandQueue: CommandQueue
+    @Inject lateinit var commandQueue: CommandQueueProvider
     @Inject lateinit var activePlugin: ActivePlugin
     @Inject lateinit var ctx: Context
     @Inject lateinit var repository: AppRepository
@@ -149,7 +149,7 @@ class InsulinDialog : DialogFragmentWithDate() {
     override fun submit(): Boolean {
         if (_binding == null) return false
         val pumpDescription = activePlugin.activePump.pumpDescription
-        val insulin = SafeParse.stringToDouble(binding.amount.text)
+        val insulin = SafeParse.stringToDouble(binding.amount.text ?: return false)
         val insulinAfterConstraints = constraintChecker.applyBolusConstraints(Constraint(insulin)).value()
         val actions: LinkedList<String?> = LinkedList()
         val units = profileFunction.getUnits()

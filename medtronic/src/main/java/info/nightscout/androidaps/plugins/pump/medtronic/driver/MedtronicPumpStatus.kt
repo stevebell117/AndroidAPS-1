@@ -34,7 +34,6 @@ class MedtronicPumpStatus @Inject constructor(private val rh: ResourceHelper,
     var maxBolus: Double? = null
     var maxBasal: Double? = null
     var runningTBR: PumpDbEntryTBR? = null
-    var runningTBRWithTemp: PumpDbEntryTBR? = null
 
     // statuses
     var pumpDeviceState = PumpDeviceState.NeverContacted

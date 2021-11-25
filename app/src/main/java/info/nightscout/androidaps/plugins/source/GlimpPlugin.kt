@@ -49,7 +49,7 @@ class GlimpPlugin @Inject constructor(
         @Inject lateinit var glimpPlugin: GlimpPlugin
         @Inject lateinit var aapsLogger: AAPSLogger
         @Inject lateinit var repository: AppRepository
-        @Inject lateinit var xDripBroadcast: XDripBroadcast
+        @Inject lateinit var broadcastToXDrip: XDripBroadcast
 
         init {
             (context.applicationContext as HasAndroidInjector).androidInjector().inject(this)
@@ -58,7 +58,7 @@ class GlimpPlugin @Inject constructor(
         override fun doWork(): Result {
             var ret = Result.success()
 
-            if (!glimpPlugin.isEnabled()) return Result.success(workDataOf("Result" to "Plugin not enabled"))
+            if (!glimpPlugin.isEnabled(PluginType.BGSOURCE)) return Result.success(workDataOf("Result" to "Plugin not enabled"))
             aapsLogger.debug(LTag.BGSOURCE, "Received Glimp Data: $inputData}")
             val glucoseValues = mutableListOf<CgmSourceTransaction.TransactionGlucoseValue>()
             glucoseValues += CgmSourceTransaction.TransactionGlucoseValue(
@@ -77,7 +77,7 @@ class GlimpPlugin @Inject constructor(
                 .blockingGet()
                 .also { savedValues ->
                     savedValues.inserted.forEach {
-                        xDripBroadcast.send(it)
+                        broadcastToXDrip(it)
                         aapsLogger.debug(LTag.DATABASE, "Inserted bg $it")
                     }
                 }

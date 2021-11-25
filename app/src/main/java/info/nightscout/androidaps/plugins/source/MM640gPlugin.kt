@@ -52,7 +52,7 @@ class MM640gPlugin @Inject constructor(
         @Inject lateinit var dateUtil: DateUtil
         @Inject lateinit var dataWorker: DataWorker
         @Inject lateinit var repository: AppRepository
-        @Inject lateinit var xDripBroadcast: XDripBroadcast
+        @Inject lateinit var broadcastToXDrip: XDripBroadcast
 
         init {
             (context.applicationContext as HasAndroidInjector).androidInjector().inject(this)
@@ -61,7 +61,7 @@ class MM640gPlugin @Inject constructor(
         override fun doWork(): Result {
             var ret = Result.success()
 
-            if (!mM640gPlugin.isEnabled()) return Result.success()
+            if (!mM640gPlugin.isEnabled(PluginType.BGSOURCE)) return Result.success()
             val collection = inputData.getString("collection") ?: return Result.failure(workDataOf("Error" to "missing collection"))
             if (collection == "entries") {
                 val data = inputData.getString("data")
@@ -93,7 +93,7 @@ class MM640gPlugin @Inject constructor(
                             .blockingGet()
                             .also { savedValues ->
                                 savedValues.all().forEach {
-                                    xDripBroadcast.send(it)
+                                    broadcastToXDrip(it)
                                     aapsLogger.debug(LTag.DATABASE, "Inserted bg $it")
                                 }
                             }

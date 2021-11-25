@@ -17,7 +17,7 @@ import javax.inject.Inject;
 
 import dagger.android.support.DaggerFragment;
 import info.nightscout.androidaps.combo.R;
-import info.nightscout.androidaps.interfaces.CommandQueue;
+import info.nightscout.androidaps.interfaces.CommandQueueProvider;
 import info.nightscout.androidaps.plugins.bus.RxBus;
 import info.nightscout.androidaps.plugins.pump.combo.events.EventComboPumpUpdateGUI;
 import info.nightscout.androidaps.plugins.pump.combo.ruffyscripter.PumpState;
@@ -33,7 +33,7 @@ import io.reactivex.disposables.CompositeDisposable;
 
 public class ComboFragment extends DaggerFragment {
     @Inject ComboPlugin comboPlugin;
-    @Inject CommandQueue commandQueue;
+    @Inject CommandQueueProvider commandQueue;
     @Inject ResourceHelper rh;
     @Inject RxBus rxBus;
     @Inject SP sp;
@@ -74,7 +74,7 @@ public class ComboFragment extends DaggerFragment {
         refreshButton = view.findViewById(R.id.combo_refresh_button);
         refreshButton.setOnClickListener(v -> {
             refreshButton.setEnabled(false);
-            commandQueue.readStatus(rh.gs(R.string.user_request), new Callback() {
+            commandQueue.readStatus("User request", new Callback() {
                 @Override
                 public void run() {
                     runOnUiThread(() -> refreshButton.setEnabled(true));

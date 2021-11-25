@@ -45,7 +45,7 @@ abstract class PumpPluginAbstract protected constructor(
     injector: HasAndroidInjector?,
     rh: ResourceHelper,
     aapsLogger: AAPSLogger,
-    commandQueue: CommandQueue,
+    commandQueue: CommandQueueProvider,
     var rxBus: RxBus,
     var activePlugin: ActivePlugin,
     var sp: SP,
@@ -323,7 +323,6 @@ abstract class PumpPluginAbstract protected constructor(
         return ret
     }
 
-    @Synchronized
     override fun deliverTreatment(detailedBolusInfo: DetailedBolusInfo): PumpEnactResult {
         return try {
             if (detailedBolusInfo.insulin == 0.0 && detailedBolusInfo.carbs == 0.0) {

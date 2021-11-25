@@ -23,6 +23,8 @@ interface OmnipodDashManager {
 
     fun suspendDelivery(hasBasalBeepEnabled: Boolean): Observable<PodEvent>
 
+    fun setTime(): Observable<PodEvent>
+
     fun setTempBasal(rate: Double, durationInMinutes: Short, tempBasalBeeps: Boolean): Observable<PodEvent>
 
     fun stopTempBasal(hasTempBasalBeepEnabled: Boolean): Observable<PodEvent>

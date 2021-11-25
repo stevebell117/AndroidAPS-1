@@ -12,6 +12,7 @@
     <string name="nav_resetdb">Nullstill databasene</string>
     <string name="reset_db_confirm">Vil du virkelig nullstille databasene?</string>
     <string name="nav_exit">Avslutt</string>
+    <string name="ns_sync_use_absolute_title">Bruk alltid absolutte verdier for basal</string>
     <string name="alert_dialog_permission_battery_optimization_failed">Det ser ikke ut som mobilen støtter registrering av apper som unntas fra batterioptimalisering - du kan oppleve ytelsesproblemer.</string>
     <string name="description_actions">Knapper for rask tilgang til ofte brukte funksjoner</string>
     <string name="description_config_builder">Brukt for innstilling av aktive plugin</string>
@@ -96,7 +97,7 @@
     <string name="safety">Sikkerhet</string>
     <string name="openapsma_disabled">Plugin er deaktivert</string>
     <string name="constraints_violation">Brudd på begrensninger</string>
-    <string name="treatmentdeliveryerror">Er registrert en feil med bolus leveransen. Sjekk manuelt om den er levert og hvor mye!</string>
+    <string name="treatmentdeliveryerror">Mislykket bolus levering</string>
     <string name="setbasalquestion">Aksepter ny temp basal:</string>
     <string name="overview_treatment_label">Behandling</string>
     <string name="overview_calculator_label">Kalkulator</string>
@@ -649,8 +650,6 @@
     <string name="time_elapsed">Tid brukt</string>
     <string name="poctech">Poctech</string>
     <string name="description_source_poctech">Motta BS verdier fra Poctech app</string>
-    <string name="glunovo">Glunovo</string>
-    <string name="description_source_glunovo">Motta BS verdier fra Glunovo app</string>
     <string name="description_source_tomato">Motta BS verdier fra Tomato app (MiaoMiao enhet)</string>
     <string name="high_temptarget_raises_sensitivity_title">Høy temp target øker sensitiviteten</string>
     <string name="high_temptarget_raises_sensitivity_summary"><![CDATA[Øk sensitiviteten for temp target >= 100]]></string>
@@ -898,7 +897,4 @@
     <string name="view">Visning</string>
     <string name="errors">Feil</string>
     <string name="ns_sync_slow">Reduser opplastingshastighet</string>
-    <string name="data_status">BS data status</string>
-    <string name="recalculated_data_used">Rekalkulerte siste data</string>
-    <string name="bg_too_close">BS for nær:\n%1$s\n%2$s</string>
 </resources>
