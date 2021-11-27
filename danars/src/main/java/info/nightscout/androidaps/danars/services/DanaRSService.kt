@@ -337,7 +337,9 @@ class DanaRSService : DaggerService() {
 
     fun tempBasal(percent: Int, durationInHours: Int): Boolean {
         if (!isConnected) return false
-        if (danaPump.isTempBasalInProgress) {
+        val status = DanaRSPacketGeneralInitialScreenInformation(injector)
+        sendMessage(status)
+        if (status.isTempBasalInProgress) {
             rxBus.send(EventPumpStatusChanged(rh.gs(R.string.stoppingtempbasal)))
             sendMessage(DanaRSPacketBasalSetCancelTemporaryBasal(injector))
             SystemClock.sleep(500)
@@ -347,6 +349,7 @@ class DanaRSService : DaggerService() {
         sendMessage(msgTBR)
         SystemClock.sleep(200)
         loadEvents()
+        SystemClock.sleep(4500)
         val tbr = pumpSync.expectedPumpState().temporaryBasal
         danaPump.fromTemporaryBasal(tbr)
         rxBus.send(EventPumpStatusChanged(EventPumpStatusChanged.Status.DISCONNECTING))
@@ -354,7 +357,9 @@ class DanaRSService : DaggerService() {
     }
 
     fun highTempBasal(percent: Int): Boolean {
-        if (danaPump.isTempBasalInProgress) {
+        val status = DanaRSPacketGeneralInitialScreenInformation(injector)
+        sendMessage(status)
+        if (status.isTempBasalInProgress) {
             rxBus.send(EventPumpStatusChanged(rh.gs(R.string.stoppingtempbasal)))
             sendMessage(DanaRSPacketBasalSetCancelTemporaryBasal(injector))
             SystemClock.sleep(500)
@@ -363,6 +368,7 @@ class DanaRSService : DaggerService() {
         val msgTBR = DanaRSPacketAPSBasalSetTemporaryBasal(injector, percent)
         sendMessage(msgTBR)
         loadEvents()
+        SystemClock.sleep(4500)
         val tbr = pumpSync.expectedPumpState().temporaryBasal
         danaPump.fromTemporaryBasal(tbr)
         rxBus.send(EventPumpStatusChanged(EventPumpStatusChanged.Status.DISCONNECTING))
@@ -374,7 +380,9 @@ class DanaRSService : DaggerService() {
             aapsLogger.error(LTag.PUMPCOMM, "Wrong duration param")
             return false
         }
-        if (danaPump.isTempBasalInProgress) {
+        val status = DanaRSPacketGeneralInitialScreenInformation(injector)
+        sendMessage(status)
+        if (status.isTempBasalInProgress) {
             rxBus.send(EventPumpStatusChanged(rh.gs(R.string.stoppingtempbasal)))
             sendMessage(DanaRSPacketBasalSetCancelTemporaryBasal(injector))
             SystemClock.sleep(500)
@@ -383,6 +391,7 @@ class DanaRSService : DaggerService() {
         val msgTBR = DanaRSPacketAPSBasalSetTemporaryBasal(injector, percent)
         sendMessage(msgTBR)
         loadEvents()
+        SystemClock.sleep(4500)
         val tbr = pumpSync.expectedPumpState().temporaryBasal
         aapsLogger.debug(LTag.PUMPCOMM, "Expected TBR found: $tbr")
         danaPump.fromTemporaryBasal(tbr)
@@ -396,6 +405,7 @@ class DanaRSService : DaggerService() {
         val msgCancel = DanaRSPacketBasalSetCancelTemporaryBasal(injector)
         sendMessage(msgCancel)
         loadEvents()
+        SystemClock.sleep(4500)
         val tbr = pumpSync.expectedPumpState().temporaryBasal
         danaPump.fromTemporaryBasal(tbr)
         rxBus.send(EventPumpStatusChanged(EventPumpStatusChanged.Status.DISCONNECTING))
@@ -409,6 +419,7 @@ class DanaRSService : DaggerService() {
         sendMessage(msgExtended)
         SystemClock.sleep(200)
         loadEvents()
+        SystemClock.sleep(4500)
         val eb = pumpSync.expectedPumpState().extendedBolus
         danaPump.fromExtendedBolus(eb)
         rxBus.send(EventPumpStatusChanged(EventPumpStatusChanged.Status.DISCONNECTING))
@@ -421,6 +432,7 @@ class DanaRSService : DaggerService() {
         val msgStop = DanaRSPacketBolusSetExtendedBolusCancel(injector)
         sendMessage(msgStop)
         loadEvents()
+        SystemClock.sleep(4500)
         val eb = pumpSync.expectedPumpState().extendedBolus
         danaPump.fromExtendedBolus(eb)
         rxBus.send(EventPumpStatusChanged(EventPumpStatusChanged.Status.DISCONNECTING))
