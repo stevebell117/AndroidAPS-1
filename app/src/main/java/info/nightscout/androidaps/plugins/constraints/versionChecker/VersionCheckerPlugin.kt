@@ -56,14 +56,15 @@ class VersionCheckerPlugin @Inject constructor(
     }
 
     override fun isClosedLoopAllowed(value: Constraint<Boolean>): Constraint<Boolean> {
-        checkWarning()
-        versionCheckerUtils.triggerCheckVersion()
-        if (isOldVersion(gracePeriod.veryOld.daysToMillis()))
-            value[aapsLogger, false, rh.gs(R.string.very_old_version)] = this
-        val endDate = sp.getLong(rh.gs(info.nightscout.androidaps.core.R.string.key_app_expiration) + "_" + config.VERSION_NAME, 0)
-        if (endDate != 0L && dateUtil.now() > endDate)
-            value[aapsLogger, false, rh.gs(R.string.application_expired)] = this
         return value
+        // checkWarning()
+        // versionCheckerUtils.triggerCheckVersion()
+        // if (isOldVersion(gracePeriod.veryOld.daysToMillis()))
+        //     value[aapsLogger, false, rh.gs(R.string.very_old_version)] = this
+        // val endDate = sp.getLong(rh.gs(info.nightscout.androidaps.core.R.string.key_app_expiration) + "_" + config.VERSION_NAME, 0)
+        // if (endDate != 0L && dateUtil.now() > endDate)
+        //     value[aapsLogger, false, rh.gs(R.string.application_expired)] = this
+        // return value
     }
 
     private fun checkWarning() {
