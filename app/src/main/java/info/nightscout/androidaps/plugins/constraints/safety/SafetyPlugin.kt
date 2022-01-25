@@ -64,13 +64,13 @@ class SafetyPlugin @Inject constructor(
     override fun isClosedLoopAllowed(value: Constraint<Boolean>): Constraint<Boolean> {
         val mode = sp.getString(R.string.key_aps_mode, "open")
         if (mode == "open") value.set(aapsLogger, false, rh.gs(R.string.closedmodedisabledinpreferences), this)
-        if (!buildHelper.isEngineeringModeOrRelease()) {
-            if (value.value()) {
-                val n = Notification(Notification.TOAST_ALARM, rh.gs(R.string.closed_loop_disabled_on_dev_branch), Notification.NORMAL)
-                rxBus.send(EventNewNotification(n))
-            }
-            value.set(aapsLogger, false, rh.gs(R.string.closed_loop_disabled_on_dev_branch), this)
-        }
+        // if (!buildHelper.isEngineeringModeOrRelease()) {
+        //     if (value.value()) {
+        //         val n = Notification(Notification.TOAST_ALARM, rh.gs(R.string.closed_loop_disabled_on_dev_branch), Notification.NORMAL)
+        //         rxBus.send(EventNewNotification(n))
+        //     }
+        //     value.set(aapsLogger, false, rh.gs(R.string.closed_loop_disabled_on_dev_branch), this)
+        // }
         val pump = activePlugin.activePump
         if (!pump.isFakingTempsByExtendedBoluses && iobCobCalculator.getExtendedBolus(dateUtil.now()) != null) {
             value.set(aapsLogger, false, rh.gs(R.string.closed_loop_disabled_with_eb), this)

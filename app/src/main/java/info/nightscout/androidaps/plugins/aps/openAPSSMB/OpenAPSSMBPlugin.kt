@@ -84,6 +84,7 @@ class OpenAPSSMBPlugin @Inject constructor(
         preferenceFragment.findPreference<SwitchPreference>(rh.gs(R.string.key_enableSMB_with_COB))?.isVisible = !smbAlwaysEnabled
         preferenceFragment.findPreference<SwitchPreference>(rh.gs(R.string.key_enableSMB_with_temptarget))?.isVisible = !smbAlwaysEnabled
         preferenceFragment.findPreference<SwitchPreference>(rh.gs(R.string.key_enableSMB_after_carbs))?.isVisible = !smbAlwaysEnabled
+        preferenceFragment.findPreference<SwitchPreference>(rh.gs(R.string.key_enableSMB_high_bg))?.isVisible = !smbAlwaysEnabled
     }
 
     override fun invoke(initiator: String, tempBasalFallback: Boolean) {

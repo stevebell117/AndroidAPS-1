@@ -63,6 +63,13 @@
         <SwitchPreference
             android:defaultValue="false"
             android:dependency="@string/key_use_smb"
+            android:key="@string/key_enableSMB_high_bg"
+            android:summary="@string/enablesmbhighbg_summary"
+            android:title="@string/enablesmbhighbg" />
+
+        <SwitchPreference
+            android:defaultValue="false"
+            android:dependency="@string/key_use_smb"
             android:key="@string/key_enableSMB_with_temptarget"
             android:summary="@string/enablesmbwithtemptarget_summary"
             android:title="@string/enablesmbwithtemptarget" />

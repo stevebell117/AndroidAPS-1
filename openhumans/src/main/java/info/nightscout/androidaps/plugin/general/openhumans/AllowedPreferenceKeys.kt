@@ -206,4 +206,5 @@ private val allowedKeys = """
     xdripstatus
     xdripstatus_detailediob
     xdripstatus_showbgi
+    enableSMB_high_bg
 """.trimIndent().split("\n").filterNot { it.isBlank() }.map { it.uppercase(Locale.getDefault()) }
