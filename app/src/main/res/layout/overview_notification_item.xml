@@ -29,8 +29,7 @@
         <Button
             android:id="@+id/dismiss"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:minHeight="0dp"
+            android:layout_height="35dp"
             android:text="@string/dismiss" />
 
     </LinearLayout>

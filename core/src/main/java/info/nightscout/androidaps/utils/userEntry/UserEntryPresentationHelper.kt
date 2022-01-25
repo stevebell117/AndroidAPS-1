@@ -70,7 +70,6 @@ class UserEntryPresentationHelper @Inject constructor(
         Sources.NSClientSource      -> R.drawable.ic_nsclient_bg
         Sources.PocTech             -> R.drawable.ic_poctech
         Sources.Tomato              -> R.drawable.ic_sensor
-        Sources.Glunovo             -> R.drawable.ic_glunovo
         Sources.Xdrip               -> R.drawable.ic_blooddrop_48
         Sources.LocalProfile        -> R.drawable.ic_local_profile
         Sources.Loop                -> R.drawable.ic_loop_closed_white
@@ -131,13 +130,13 @@ class UserEntryPresentationHelper @Inject constructor(
         is ValueWithUnit.Timestamp             -> dateUtil.dateAndTimeAndSecondsString(valueWithUnit.value)
 
         is ValueWithUnit.Mgdl                  -> {
-            if (profileFunction.getUnits() == GlucoseUnit.MGDL) DecimalFormatter.to0Decimal(valueWithUnit.value) + rh.gs(R.string.mgdl)
-            else DecimalFormatter.to1Decimal(valueWithUnit.value * Constants.MGDL_TO_MMOLL) + rh.gs(R.string.mmol)
+            if (profileFunction.getUnits() == GlucoseUnit.MGDL) DecimalFormatter.to0Decimal(valueWithUnit.value) + translator.translate(valueWithUnit)
+            else DecimalFormatter.to1Decimal(valueWithUnit.value / Constants.MMOLL_TO_MGDL) + translator.translate(valueWithUnit)
         }
 
         is ValueWithUnit.Mmoll                 -> {
-            if (profileFunction.getUnits() == GlucoseUnit.MMOL) DecimalFormatter.to1Decimal(valueWithUnit.value) + rh.gs(R.string.mmol)
-            else DecimalFormatter.to0Decimal(valueWithUnit.value * Constants.MMOLL_TO_MGDL) + rh.gs(R.string.mgdl)
+            if (profileFunction.getUnits() == GlucoseUnit.MGDL) DecimalFormatter.to0Decimal(valueWithUnit.value) + translator.translate(valueWithUnit)
+            else DecimalFormatter.to1Decimal(valueWithUnit.value * Constants.MMOLL_TO_MGDL) + translator.translate(valueWithUnit)
         }
 
         ValueWithUnit.UNKNOWN                  -> ""
@@ -205,10 +204,10 @@ class UserEntryPresentationHelper @Inject constructor(
                 is ValueWithUnit.Timestamp             -> timestamp = dateUtil.dateAndTimeAndSecondsString(valueWithUnit.value)
 
                 is ValueWithUnit.Mgdl                  ->
-                    bg = Profile.toUnitsString(valueWithUnit.value, valueWithUnit.value * Constants.MGDL_TO_MMOLL, profileFunction.getUnits())
+                    bg = Profile.toUnitsString(valueWithUnit.value, valueWithUnit.value * Constants.MMOLL_TO_MGDL, profileFunction.getUnits())
 
                 is ValueWithUnit.Mmoll                 ->
-                    bg = Profile.toUnitsString(valueWithUnit.value * Constants.MMOLL_TO_MGDL, valueWithUnit.value , profileFunction.getUnits())
+                    bg = Profile.toUnitsString(valueWithUnit.value, valueWithUnit.value * Constants.MMOLL_TO_MGDL, profileFunction.getUnits())
 
                 ValueWithUnit.UNKNOWN                  -> Unit
             }

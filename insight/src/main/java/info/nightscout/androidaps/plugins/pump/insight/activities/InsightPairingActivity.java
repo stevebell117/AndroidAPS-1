@@ -2,7 +2,6 @@ package info.nightscout.androidaps.plugins.pump.insight.activities;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -26,19 +25,13 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.inject.Inject;
-
 import info.nightscout.androidaps.activities.NoSplashAppCompatActivity;
 import info.nightscout.androidaps.insight.R;
-import info.nightscout.androidaps.plugins.pump.common.ble.BlePreCheck;
 import info.nightscout.androidaps.plugins.pump.insight.connection_service.InsightConnectionService;
 import info.nightscout.androidaps.plugins.pump.insight.descriptors.InsightState;
 import info.nightscout.androidaps.plugins.pump.insight.utils.ExceptionTranslator;
 
 public class InsightPairingActivity extends NoSplashAppCompatActivity implements InsightConnectionService.StateCallback, View.OnClickListener, InsightConnectionService.ExceptionCallback {
-
-    @Inject BlePreCheck blePreCheck;
-    @Inject Context context;
 
     private boolean scanning;
     private LinearLayout deviceSearchSection;
@@ -77,8 +70,6 @@ public class InsightPairingActivity extends NoSplashAppCompatActivity implements
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_insight_pairing);
-
-        blePreCheck.prerequisitesCheck(this);
 
         deviceSearchSection = findViewById(R.id.device_search_section);
         pleaseWaitSection = findViewById(R.id.please_wait_section);
@@ -169,7 +160,7 @@ public class InsightPairingActivity extends NoSplashAppCompatActivity implements
 
     private void startBLScan() {
         if (!scanning) {
-            BluetoothAdapter bluetoothAdapter = ((BluetoothManager)context.getSystemService(Context.BLUETOOTH_SERVICE)).getAdapter();
+            BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
             if (bluetoothAdapter != null) {
                 if (!bluetoothAdapter.isEnabled()) bluetoothAdapter.enable();
                 IntentFilter intentFilter = new IntentFilter();
@@ -185,7 +176,7 @@ public class InsightPairingActivity extends NoSplashAppCompatActivity implements
     private void stopBLScan() {
         if (scanning) {
             unregisterReceiver(broadcastReceiver);
-            BluetoothAdapter bluetoothAdapter = ((BluetoothManager)context.getSystemService(Context.BLUETOOTH_SERVICE)).getAdapter();
+            BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
             if (bluetoothAdapter != null) {
                 bluetoothAdapter.cancelDiscovery();
             }
@@ -213,7 +204,7 @@ public class InsightPairingActivity extends NoSplashAppCompatActivity implements
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
             if (action.equals(BluetoothAdapter.ACTION_DISCOVERY_FINISHED))
-                ((BluetoothManager)context.getSystemService(Context.BLUETOOTH_SERVICE)).getAdapter().startDiscovery();
+                BluetoothAdapter.getDefaultAdapter().startDiscovery();
             else if (action.equals(BluetoothDevice.ACTION_FOUND)) {
                 BluetoothDevice bluetoothDevice = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 deviceAdapter.addDevice(bluetoothDevice);

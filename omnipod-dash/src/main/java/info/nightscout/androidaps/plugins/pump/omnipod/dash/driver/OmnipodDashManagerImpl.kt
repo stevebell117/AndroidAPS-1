@@ -1,8 +1,8 @@
 package info.nightscout.androidaps.plugins.pump.omnipod.dash.driver
 
 import android.os.SystemClock
-import info.nightscout.shared.logging.AAPSLogger
-import info.nightscout.shared.logging.LTag
+import info.nightscout.androidaps.logging.AAPSLogger
+import info.nightscout.androidaps.logging.LTag
 import info.nightscout.androidaps.plugins.pump.omnipod.dash.driver.comm.OmnipodDashBleManager
 import info.nightscout.androidaps.plugins.pump.omnipod.dash.driver.event.PodEvent
 import info.nightscout.androidaps.plugins.pump.omnipod.dash.driver.pod.command.*
@@ -375,7 +375,6 @@ class OmnipodDashManagerImpl @Inject constructor(
             )
         }
         if (podStateManager.activationProgress.isBefore(ActivationProgress.INSERTING_CANNULA)) {
-            observables.add(observeConnectToPod) // connection can time out while waiting
             observables.add(
                 Observable.defer {
                     Observable.timer(podStateManager.secondPrimeBolusVolume!!.toLong(), TimeUnit.SECONDS)
@@ -672,9 +671,11 @@ class OmnipodDashManagerImpl @Inject constructor(
 
             when (event) {
                 is PodEvent.AlreadyConnected -> {
+                    podStateManager.bluetoothAddress = event.bluetoothAddress
                 }
 
                 is PodEvent.BluetoothConnected -> {
+                    podStateManager.bluetoothAddress = event.bluetoothAddress
                 }
 
                 is PodEvent.Connected -> {

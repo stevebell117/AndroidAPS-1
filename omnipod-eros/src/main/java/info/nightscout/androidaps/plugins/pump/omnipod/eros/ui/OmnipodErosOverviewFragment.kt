@@ -25,9 +25,9 @@ import info.nightscout.androidaps.plugins.pump.common.hw.rileylink.defs.RileyLin
 import info.nightscout.androidaps.plugins.pump.common.hw.rileylink.service.RileyLinkServiceData
 import info.nightscout.androidaps.plugins.pump.omnipod.common.databinding.OmnipodCommonOverviewButtonsBinding
 import info.nightscout.androidaps.plugins.pump.omnipod.common.databinding.OmnipodCommonOverviewPodInfoBinding
+import info.nightscout.androidaps.plugins.pump.omnipod.common.queue.command.CommandSilenceAlerts
 import info.nightscout.androidaps.plugins.pump.omnipod.common.queue.command.CommandHandleTimeChange
 import info.nightscout.androidaps.plugins.pump.omnipod.common.queue.command.CommandResumeDelivery
-import info.nightscout.androidaps.plugins.pump.omnipod.common.queue.command.CommandSilenceAlerts
 import info.nightscout.androidaps.plugins.pump.omnipod.common.queue.command.CommandSuspendDelivery
 import info.nightscout.androidaps.plugins.pump.omnipod.eros.OmnipodErosPumpPlugin
 import info.nightscout.androidaps.plugins.pump.omnipod.eros.R
@@ -51,7 +51,7 @@ import info.nightscout.androidaps.utils.alertDialogs.OKDialog
 import info.nightscout.androidaps.utils.protection.ProtectionCheck
 import info.nightscout.androidaps.utils.resources.ResourceHelper
 import info.nightscout.androidaps.utils.rx.AapsSchedulers
-import info.nightscout.shared.sharedPreferences.SP
+import info.nightscout.androidaps.utils.sharedPreferences.SP
 import info.nightscout.androidaps.utils.ui.UIRunnable
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.plusAssign
@@ -87,13 +87,13 @@ class OmnipodErosOverviewFragment : DaggerFragment() {
 
     private var disposables: CompositeDisposable = CompositeDisposable()
 
-    private val handler = Handler(HandlerThread(this::class.simpleName + "Handler").also { it.start() }.looper)
+    private val loopHandler = Handler(HandlerThread(this::class.simpleName + "Handler").also { it.start() }.looper)
     private lateinit var refreshLoop: Runnable
 
     init {
         refreshLoop = Runnable {
             activity?.runOnUiThread { updateUi() }
-            handler.postDelayed(refreshLoop, REFRESH_INTERVAL_MILLIS)
+            loopHandler.postDelayed(refreshLoop, REFRESH_INTERVAL_MILLIS)
         }
     }
 
@@ -137,18 +137,14 @@ class OmnipodErosOverviewFragment : DaggerFragment() {
 
         buttonBinding.buttonResumeDelivery.setOnClickListener {
             disablePodActionButtons()
-            commandQueue.customCommand(
-                CommandResumeDelivery(),
-                DisplayResultDialogCallback(rh.gs(R.string.omnipod_common_error_failed_to_resume_delivery), true).messageOnSuccess(rh.gs(R.string.omnipod_common_confirmation_delivery_resumed))
-            )
+            commandQueue.customCommand(CommandResumeDelivery(),
+                DisplayResultDialogCallback(rh.gs(R.string.omnipod_common_error_failed_to_resume_delivery), true).messageOnSuccess(rh.gs(R.string.omnipod_common_confirmation_delivery_resumed)))
         }
 
         buttonBinding.buttonRefreshStatus.setOnClickListener {
             disablePodActionButtons()
-            commandQueue.customCommand(
-                CommandGetPodStatus(),
-                DisplayResultDialogCallback(rh.gs(R.string.omnipod_common_error_failed_to_refresh_status), false)
-            )
+            commandQueue.customCommand(CommandGetPodStatus(),
+                DisplayResultDialogCallback(rh.gs(R.string.omnipod_common_error_failed_to_refresh_status), false))
         }
 
         buttonBinding.buttonSilenceAlerts.setOnClickListener {
@@ -162,60 +158,56 @@ class OmnipodErosOverviewFragment : DaggerFragment() {
 
         buttonBinding.buttonSuspendDelivery.setOnClickListener {
             disablePodActionButtons()
-            commandQueue.customCommand(
-                CommandSuspendDelivery(),
+            commandQueue.customCommand(CommandSuspendDelivery(),
                 DisplayResultDialogCallback(rh.gs(R.string.omnipod_common_error_failed_to_suspend_delivery), true)
-                    .messageOnSuccess(rh.gs(R.string.omnipod_common_confirmation_suspended_delivery))
-            )
+                    .messageOnSuccess(rh.gs(R.string.omnipod_common_confirmation_suspended_delivery)))
         }
 
         buttonBinding.buttonSetTime.setOnClickListener {
             disablePodActionButtons()
-            commandQueue.customCommand(
-                CommandHandleTimeChange(true),
+            commandQueue.customCommand(CommandHandleTimeChange(true),
                 DisplayResultDialogCallback(rh.gs(R.string.omnipod_common_error_failed_to_set_time), true)
-                    .messageOnSuccess(rh.gs(R.string.omnipod_common_confirmation_time_on_pod_updated))
-            )
+                    .messageOnSuccess(rh.gs(R.string.omnipod_common_confirmation_time_on_pod_updated)))
         }
     }
 
     override fun onResume() {
         super.onResume()
-        handler.postDelayed(refreshLoop, REFRESH_INTERVAL_MILLIS)
+        loopHandler.postDelayed(refreshLoop, REFRESH_INTERVAL_MILLIS)
         disposables += rxBus
             .toObservable(EventRileyLinkDeviceStatusChange::class.java)
             .observeOn(aapsSchedulers.main)
             .subscribe({
-                           updateRileyLinkStatus()
-                           updatePodActionButtons()
-                       }, fabricPrivacy::logException)
+                updateRileyLinkStatus()
+                updatePodActionButtons()
+            }, fabricPrivacy::logException)
         disposables += rxBus
             .toObservable(EventOmnipodErosPumpValuesChanged::class.java)
             .observeOn(aapsSchedulers.main)
             .subscribe({
-                           updateOmnipodStatus()
-                           updatePodActionButtons()
-                       }, fabricPrivacy::logException)
+                updateOmnipodStatus()
+                updatePodActionButtons()
+            }, fabricPrivacy::logException)
         disposables += rxBus
             .toObservable(EventQueueChanged::class.java)
             .observeOn(aapsSchedulers.main)
             .subscribe({
-                           updateQueueStatus()
-                           updatePodActionButtons()
-                       }, fabricPrivacy::logException)
+                updateQueueStatus()
+                updatePodActionButtons()
+            }, fabricPrivacy::logException)
         disposables += rxBus
             .toObservable(EventPreferenceChange::class.java)
             .observeOn(aapsSchedulers.main)
             .subscribe({
-                           updatePodActionButtons()
-                       }, fabricPrivacy::logException)
+                updatePodActionButtons()
+            }, fabricPrivacy::logException)
         updateUi()
     }
 
     override fun onPause() {
         super.onPause()
         disposables.clear()
-        handler.removeCallbacks(refreshLoop)
+        loopHandler.removeCallbacks(refreshLoop)
     }
 
     @Synchronized
@@ -287,26 +279,22 @@ class OmnipodErosOverviewFragment : DaggerFragment() {
             podInfoBinding.firmwareVersion.text = rh.gs(R.string.omnipod_eros_overview_firmware_version_value, podStateManager.pmVersion.toString(), podStateManager.piVersion.toString())
 
             podInfoBinding.timeOnPod.text = readableZonedTime(podStateManager.time)
-            podInfoBinding.timeOnPod.setTextColor(
-                if (podStateManager.timeDeviatesMoreThan(OmnipodConstants.TIME_DEVIATION_THRESHOLD)) {
-                    Color.RED
-                } else {
-                    Color.WHITE
-                }
-            )
+            podInfoBinding.timeOnPod.setTextColor(if (podStateManager.timeDeviatesMoreThan(OmnipodConstants.TIME_DEVIATION_THRESHOLD)) {
+                Color.RED
+            } else {
+                Color.WHITE
+            })
             val expiresAt = podStateManager.expiresAt
             if (expiresAt == null) {
                 podInfoBinding.podExpiryDate.text = PLACEHOLDER
                 podInfoBinding.podExpiryDate.setTextColor(Color.WHITE)
             } else {
                 podInfoBinding.podExpiryDate.text = readableZonedTime(expiresAt)
-                podInfoBinding.podExpiryDate.setTextColor(
-                    if (DateTime.now().isAfter(expiresAt)) {
-                        Color.RED
-                    } else {
-                        Color.WHITE
-                    }
-                )
+                podInfoBinding.podExpiryDate.setTextColor(if (DateTime.now().isAfter(expiresAt)) {
+                    Color.RED
+                } else {
+                    Color.WHITE
+                })
             }
 
             if (podStateManager.isPodFaulted) {
@@ -337,13 +325,11 @@ class OmnipodErosOverviewFragment : DaggerFragment() {
                     ?: OmnipodConstants.DEFAULT_MAX_RESERVOIR_ALERT_THRESHOLD).toDouble()
 
                 podInfoBinding.reservoir.text = rh.gs(R.string.omnipod_common_overview_reservoir_value, podStateManager.reservoirLevel)
-                podInfoBinding.reservoir.setTextColor(
-                    if (podStateManager.reservoirLevel < lowReservoirThreshold) {
-                        Color.RED
-                    } else {
-                        Color.WHITE
-                    }
-                )
+                podInfoBinding.reservoir.setTextColor(if (podStateManager.reservoirLevel < lowReservoirThreshold) {
+                    Color.RED
+                } else {
+                    Color.WHITE
+                })
             }
 
             podInfoBinding.podActiveAlerts.text = if (podStateManager.hasActiveAlerts()) {
@@ -417,24 +403,17 @@ class OmnipodErosOverviewFragment : DaggerFragment() {
             }
         }
 
-        val podStatusColor =
-            if (!podStateManager.isPodActivationCompleted || podStateManager.isPodDead || podStateManager.isSuspended || (podStateManager.isPodRunning && !podStateManager.isBasalCertain)) {
-                Color.RED
-            } else {
-                Color.WHITE
-            }
+        val podStatusColor = if (!podStateManager.isPodActivationCompleted || podStateManager.isPodDead || podStateManager.isSuspended || (podStateManager.isPodRunning && !podStateManager.isBasalCertain)) {
+            Color.RED
+        } else {
+            Color.WHITE
+        }
         podInfoBinding.podStatus.setTextColor(podStatusColor)
     }
 
     private fun updateLastBolus() {
         if (podStateManager.isPodActivationCompleted && podStateManager.hasLastBolus()) {
-            var text =
-                rh.gs(
-                    R.string.omnipod_common_overview_last_bolus_value,
-                    omnipodErosPumpPlugin.model().determineCorrectBolusSize(podStateManager.lastBolusAmount),
-                    rh.gs(R.string.insulin_unit_shortname),
-                    readableDuration(podStateManager.lastBolusStartTime)
-                )
+            var text = rh.gs(R.string.omnipod_common_overview_last_bolus_value, omnipodErosPumpPlugin.model().determineCorrectBolusSize(podStateManager.lastBolusAmount), rh.gs(R.string.insulin_unit_shortname), readableDuration(podStateManager.lastBolusStartTime))
             val textColor: Int
 
             if (podStateManager.isLastBolusCertain) {
@@ -537,9 +516,7 @@ class OmnipodErosOverviewFragment : DaggerFragment() {
 
     private fun updateSilenceAlertsButton() {
         if (!omnipodManager.isAutomaticallyAcknowledgeAlertsEnabled && podStateManager.isPodRunning && (podStateManager.hasActiveAlerts() || commandQueue.isCustomCommandInQueue(
-                CommandSilenceAlerts::class.java
-            ))
-        ) {
+                CommandSilenceAlerts::class.java))) {
             buttonBinding.buttonSilenceAlerts.visibility = View.VISIBLE
             buttonBinding.buttonSilenceAlerts.isEnabled = rileyLinkServiceData.rileyLinkServiceState.isReady && isQueueEmpty()
         } else {
@@ -569,10 +546,8 @@ class OmnipodErosOverviewFragment : DaggerFragment() {
     private fun displayNotConfiguredDialog() {
         context?.let {
             UIRunnable {
-                OKDialog.show(
-                    it, rh.gs(R.string.omnipod_common_warning),
-                    rh.gs(R.string.omnipod_eros_error_operation_not_possible_no_configuration), null
-                )
+                OKDialog.show(it, rh.gs(R.string.omnipod_common_warning),
+                    rh.gs(R.string.omnipod_eros_error_operation_not_possible_no_configuration), null)
             }.run()
         }
     }
@@ -625,10 +600,8 @@ class OmnipodErosOverviewFragment : DaggerFragment() {
             seconds < 24 * 60 * 60 -> { // < 1 day
                 val minutesLeft = minutes % 60
                 if (minutesLeft > 0)
-                    return rh.gs(
-                        R.string.omnipod_common_time_ago,
-                        rh.gs(R.string.omnipod_common_composite_time, rh.gq(R.plurals.omnipod_common_hours, hours, hours), rh.gq(R.plurals.omnipod_common_minutes, minutesLeft, minutesLeft))
-                    )
+                    return rh.gs(R.string.omnipod_common_time_ago,
+                        rh.gs(R.string.omnipod_common_composite_time, rh.gq(R.plurals.omnipod_common_hours, hours, hours), rh.gq(R.plurals.omnipod_common_minutes, minutesLeft, minutesLeft)))
                 return rh.gs(R.string.omnipod_common_time_ago, rh.gq(R.plurals.omnipod_common_hours, hours, hours))
             }
 
@@ -636,10 +609,8 @@ class OmnipodErosOverviewFragment : DaggerFragment() {
                 val days = hours / 24
                 val hoursLeft = hours % 24
                 if (hoursLeft > 0)
-                    return rh.gs(
-                        R.string.omnipod_common_time_ago,
-                        rh.gs(R.string.omnipod_common_composite_time, rh.gq(R.plurals.omnipod_common_days, days, days), rh.gq(R.plurals.omnipod_common_hours, hoursLeft, hoursLeft))
-                    )
+                    return rh.gs(R.string.omnipod_common_time_ago,
+                        rh.gs(R.string.omnipod_common_composite_time, rh.gq(R.plurals.omnipod_common_days, days, days), rh.gq(R.plurals.omnipod_common_hours, hoursLeft, hoursLeft)))
                 return rh.gs(R.string.omnipod_common_time_ago, rh.gq(R.plurals.omnipod_common_days, days, days))
             }
         }

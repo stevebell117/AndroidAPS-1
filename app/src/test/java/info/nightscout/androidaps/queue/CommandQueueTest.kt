@@ -17,19 +17,19 @@ import info.nightscout.androidaps.interfaces.Config
 import info.nightscout.androidaps.interfaces.Constraint
 import info.nightscout.androidaps.interfaces.ProfileFunction
 import info.nightscout.androidaps.interfaces.PumpSync
-import info.nightscout.shared.logging.AAPSLogger
+import info.nightscout.androidaps.logging.AAPSLogger
 import info.nightscout.androidaps.plugins.bus.RxBus
 import info.nightscout.androidaps.plugins.configBuilder.ConstraintChecker
 import info.nightscout.androidaps.plugins.general.maintenance.PrefFileListProvider
 import info.nightscout.androidaps.queue.commands.*
-import info.nightscout.androidaps.utils.AndroidPermission
 import info.nightscout.androidaps.utils.DateUtil
 import info.nightscout.androidaps.utils.FabricPrivacy
 import info.nightscout.androidaps.utils.buildHelper.BuildHelper
 import info.nightscout.androidaps.utils.buildHelper.BuildHelperImpl
+import info.nightscout.androidaps.utils.buildHelper.ConfigImpl
 import info.nightscout.androidaps.utils.resources.ResourceHelper
 import info.nightscout.androidaps.utils.rx.AapsSchedulers
-import info.nightscout.shared.sharedPreferences.SP
+import info.nightscout.androidaps.utils.sharedPreferences.SP
 import io.reactivex.Single
 import org.junit.Assert
 import org.junit.Before
@@ -39,7 +39,7 @@ import org.mockito.Mockito.`when`
 import org.mockito.Mockito.anyLong
 import java.util.*
 
-class CommandQueueImplementationTest : TestBaseWithProfile() {
+class CommandQueueTest : TestBaseWithProfile() {
 
     @Mock lateinit var constraintChecker: ConstraintChecker
     @Mock lateinit var activePlugin: ActivePlugin
@@ -47,7 +47,6 @@ class CommandQueueImplementationTest : TestBaseWithProfile() {
     @Mock lateinit var powerManager: PowerManager
     @Mock lateinit var repository: AppRepository
     @Mock lateinit var fileListProvider: PrefFileListProvider
-    @Mock lateinit var androidPermission: AndroidPermission
 
     class CommandQueueMocked(
         injector: HasAndroidInjector,
@@ -64,10 +63,9 @@ class CommandQueueImplementationTest : TestBaseWithProfile() {
         dateUtil: DateUtil,
         repository: AppRepository,
         fabricPrivacy: FabricPrivacy,
-        config: Config,
-        androidPermission: AndroidPermission
-    ) : CommandQueueImplementation(injector, aapsLogger, rxBus, aapsSchedulers, rh, constraintChecker, profileFunction,
-                                   activePlugin, context, sp, buildHelper, dateUtil, repository, fabricPrivacy, config, androidPermission) {
+        config: Config
+    ) : CommandQueue(injector, aapsLogger, rxBus, aapsSchedulers, rh, constraintChecker, profileFunction,
+                     activePlugin, context, sp, buildHelper, dateUtil, repository, fabricPrivacy, config) {
 
         override fun notifyAboutNewCommand() {}
 
@@ -101,16 +99,15 @@ class CommandQueueImplementationTest : TestBaseWithProfile() {
         }
     }
 
-    private lateinit var commandQueue: CommandQueueImplementation
+    private lateinit var commandQueue: CommandQueue
     private lateinit var testPumpPlugin: TestPumpPlugin
 
     @Before
     fun prepare() {
         commandQueue = CommandQueueMocked(injector, aapsLogger, rxBus, aapsSchedulers, rh,
                                           constraintChecker, profileFunction, activePlugin, context, sp,
-                                         BuildHelperImpl(config, fileListProvider), dateUtil,
-                                          repository,
-                                          fabricPrivacy, config, androidPermission)
+                                         BuildHelperImpl(ConfigImpl(), fileListProvider), dateUtil, repository,
+                                          fabricPrivacy, config)
         testPumpPlugin = TestPumpPlugin(injector)
 
         testPumpPlugin.pumpDescription.basalMinimumRate = 0.1
@@ -141,11 +138,10 @@ class CommandQueueImplementationTest : TestBaseWithProfile() {
 
     @Test
     fun commandIsPickedUp() {
-        val commandQueue = CommandQueueImplementation(injector, aapsLogger, rxBus, aapsSchedulers, rh,
-                                                      constraintChecker, profileFunction, activePlugin, context, sp,
-                                                      BuildHelperImpl(config, fileListProvider),
-                                                      dateUtil, repository,
-                                                      fabricPrivacy, config, androidPermission)
+        val commandQueue = CommandQueue(injector, aapsLogger, rxBus, aapsSchedulers, rh,
+                                        constraintChecker, profileFunction, activePlugin, context, sp,
+                                        BuildHelperImpl(ConfigImpl(), fileListProvider), dateUtil, repository,
+                                        fabricPrivacy, config)
         // start with empty queue
         Assert.assertEquals(0, commandQueue.size())
 

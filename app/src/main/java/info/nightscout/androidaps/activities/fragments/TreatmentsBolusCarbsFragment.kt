@@ -17,7 +17,6 @@ import info.nightscout.androidaps.database.entities.Carbs
 import info.nightscout.androidaps.database.entities.UserEntry.Action
 import info.nightscout.androidaps.database.entities.UserEntry.Sources
 import info.nightscout.androidaps.database.entities.ValueWithUnit
-import info.nightscout.androidaps.database.transactions.CutCarbsTransaction
 import info.nightscout.androidaps.database.transactions.InvalidateBolusCalculatorResultTransaction
 import info.nightscout.androidaps.database.transactions.InvalidateBolusTransaction
 import info.nightscout.androidaps.database.transactions.InvalidateCarbsTransaction
@@ -28,6 +27,8 @@ import info.nightscout.androidaps.events.EventAutosensCalculationFinished
 import info.nightscout.androidaps.events.EventTreatmentChange
 import info.nightscout.androidaps.interfaces.ActivePlugin
 import info.nightscout.androidaps.interfaces.ProfileFunction
+import info.nightscout.androidaps.logging.AAPSLogger
+import info.nightscout.androidaps.logging.LTag
 import info.nightscout.androidaps.logging.UserEntryLogger
 import info.nightscout.androidaps.plugins.bus.RxBus
 import info.nightscout.androidaps.plugins.general.nsclient.events.EventNSClientRestart
@@ -42,9 +43,7 @@ import info.nightscout.androidaps.extensions.toVisibility
 import info.nightscout.androidaps.plugins.iob.iobCobCalculator.events.EventNewHistoryData
 import info.nightscout.androidaps.utils.resources.ResourceHelper
 import info.nightscout.androidaps.utils.rx.AapsSchedulers
-import info.nightscout.shared.logging.AAPSLogger
-import info.nightscout.shared.logging.LTag
-import info.nightscout.shared.sharedPreferences.SP
+import info.nightscout.androidaps.utils.sharedPreferences.SP
 import io.reactivex.Completable
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.plusAssign
@@ -132,26 +131,15 @@ class TreatmentsBolusCarbsFragment : DaggerFragment() {
                             }
                         }
                     repository
-                        .getCarbsDataFromTimeNotExpanded(dateUtil.now(), false)
+                        .getCarbsDataFromTime(dateUtil.now(), false)
                         .observeOn(aapsSchedulers.main)
                         .subscribe { list ->
                             list.forEach { carb ->
-                                if (carb.duration == 0L)
-                                    disposable += repository.runTransactionForResult(InvalidateCarbsTransaction(carb.id))
-                                        .subscribe(
-                                            { result -> result.invalidated.forEach { aapsLogger.debug(LTag.DATABASE, "Invalidated carbs $it") } },
-                                            { aapsLogger.error(LTag.DATABASE, "Error while invalidating carbs", it) }
-                                        )
-                                else {
-                                    disposable += repository.runTransactionForResult(CutCarbsTransaction(carb.id, dateUtil.now()))
-                                        .subscribe(
-                                            { result ->
-                                                result.invalidated.forEach { aapsLogger.debug(LTag.DATABASE, "Invalidated carbs $it") }
-                                                result.updated.forEach { aapsLogger.debug(LTag.DATABASE, "Updated (cut end) carbs $it") }
-                                            },
-                                            { aapsLogger.error(LTag.DATABASE, "Error while invalidating carbs", it) }
-                                        )
-                                }
+                                disposable += repository.runTransactionForResult(InvalidateCarbsTransaction(carb.id))
+                                    .subscribe(
+                                        { result -> result.invalidated.forEach { aapsLogger.debug(LTag.DATABASE, "Invalidated carbs $it") } },
+                                        { aapsLogger.error(LTag.DATABASE, "Error while invalidating carbs", it) }
+                                    )
                             }
                         }
                     repository

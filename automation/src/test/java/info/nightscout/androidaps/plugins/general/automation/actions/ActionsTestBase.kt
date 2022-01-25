@@ -7,18 +7,17 @@ import info.nightscout.androidaps.automation.R
 import info.nightscout.androidaps.data.PumpEnactResult
 import info.nightscout.androidaps.database.entities.OfflineEvent
 import info.nightscout.androidaps.interfaces.*
-import info.nightscout.shared.logging.AAPSLogger
+import info.nightscout.androidaps.logging.AAPSLogger
 import info.nightscout.androidaps.logging.UserEntryLogger
 import info.nightscout.androidaps.plugins.general.automation.TestBaseWithProfile
 import info.nightscout.androidaps.plugins.general.automation.triggers.Trigger
 import info.nightscout.androidaps.utils.resources.ResourceHelper
-import info.nightscout.shared.sharedPreferences.SP
+import info.nightscout.androidaps.utils.sharedPreferences.SP
 import org.junit.Before
 import org.mockito.Mock
 import org.mockito.Mockito.`when`
 
-open class
-ActionsTestBase : TestBaseWithProfile() {
+open class ActionsTestBase : TestBaseWithProfile() {
 
     open class TestLoopPlugin(
         aapsLogger: AAPSLogger,
@@ -32,19 +31,16 @@ ActionsTestBase : TestBaseWithProfile() {
         private var suspended = false
         override var lastRun: Loop.LastRun? = Loop.LastRun()
         override val isSuspended: Boolean = suspended
-        override val isLGS: Boolean = false
-        override val isSuperBolus: Boolean = false
-        override val isDisconnected: Boolean = false
         override var enabled: Boolean
             get() = true
             set(_) {}
 
-        override fun invoke(initiator: String, allowNotification: Boolean, tempBasalFallback: Boolean) {}
-        override fun acceptChangeRequest() {}
         override fun minutesToEndOfSuspend(): Int = 0
-        override fun goToZeroTemp(durationInMinutes: Int, profile: Profile, reason: OfflineEvent.Reason) {}
+
+        override fun goToZeroTemp(durationInMinutes: Int, profile: Profile, reason: OfflineEvent.Reason) {
+        }
+
         override fun suspendLoop(durationInMinutes: Int) {}
-        override fun disableCarbSuggestions(durationMinutes: Int) {}
     }
 
     @Mock lateinit var sp: SP
@@ -103,7 +99,7 @@ ActionsTestBase : TestBaseWithProfile() {
             }
             if (it is ActionLoopSuspend) {
                 it.aapsLogger = aapsLogger
-                it.loop = loopPlugin
+                it.loopPlugin = loopPlugin
                 it.rh = rh
                 it.rxBus = rxBus
                 it.uel = uel

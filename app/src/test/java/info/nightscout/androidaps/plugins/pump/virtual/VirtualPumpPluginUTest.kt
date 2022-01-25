@@ -3,8 +3,7 @@ package info.nightscout.androidaps.plugins.pump.virtual
 import dagger.android.AndroidInjector
 import info.nightscout.androidaps.R
 import info.nightscout.androidaps.TestBase
-import info.nightscout.androidaps.interfaces.CommandQueue
-import info.nightscout.androidaps.interfaces.Config
+import info.nightscout.androidaps.interfaces.CommandQueueProvider
 import info.nightscout.androidaps.interfaces.IobCobCalculator
 import info.nightscout.androidaps.interfaces.ProfileFunction
 import info.nightscout.androidaps.interfaces.PumpSync
@@ -12,8 +11,9 @@ import info.nightscout.androidaps.plugins.bus.RxBus
 import info.nightscout.androidaps.plugins.pump.common.defs.PumpType
 import info.nightscout.androidaps.utils.DateUtil
 import info.nightscout.androidaps.utils.FabricPrivacy
+import info.nightscout.androidaps.utils.buildHelper.ConfigImpl
 import info.nightscout.androidaps.utils.resources.ResourceHelper
-import info.nightscout.shared.sharedPreferences.SP
+import info.nightscout.androidaps.utils.sharedPreferences.SP
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
@@ -28,16 +28,15 @@ class VirtualPumpPluginUTest : TestBase() {
     @Mock lateinit var sp: SP
     @Mock lateinit var profileFunction: ProfileFunction
     @Mock lateinit var iobCobCalculator: IobCobCalculator
-    @Mock lateinit var commandQueue: CommandQueue
+    @Mock lateinit var commandQueue: CommandQueueProvider
     @Mock lateinit var dateUtil: DateUtil
     @Mock lateinit var pumpSync: PumpSync
-    @Mock lateinit var config: Config
 
     lateinit var virtualPumpPlugin: VirtualPumpPlugin
 
     @Before
     fun prepareMocks() {
-        virtualPumpPlugin = VirtualPumpPlugin({ AndroidInjector { } }, aapsLogger, rxBus, fabricPrivacy, rh, aapsSchedulers, sp, profileFunction, iobCobCalculator, commandQueue, pumpSync, config, dateUtil)
+        virtualPumpPlugin = VirtualPumpPlugin({ AndroidInjector { } }, aapsLogger, rxBus, fabricPrivacy, rh, aapsSchedulers, sp, profileFunction, iobCobCalculator, commandQueue, pumpSync, ConfigImpl(), dateUtil)
     }
 
     @Test

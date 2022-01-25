@@ -24,9 +24,10 @@ import info.nightscout.androidaps.database.transactions.InsertAndCancelCurrentTe
 import info.nightscout.androidaps.extensions.total
 import info.nightscout.androidaps.extensions.valueToUnits
 import info.nightscout.androidaps.interfaces.*
-import info.nightscout.shared.logging.AAPSLogger
-import info.nightscout.shared.logging.LTag
+import info.nightscout.androidaps.logging.AAPSLogger
+import info.nightscout.androidaps.logging.LTag
 import info.nightscout.androidaps.logging.UserEntryLogger
+import info.nightscout.androidaps.plugins.aps.loop.LoopPlugin
 import info.nightscout.androidaps.plugins.bus.RxBus
 import info.nightscout.androidaps.plugins.configBuilder.ConstraintChecker
 import info.nightscout.androidaps.plugins.general.overview.events.EventDismissNotification
@@ -37,9 +38,8 @@ import info.nightscout.androidaps.queue.Callback
 import info.nightscout.androidaps.utils.*
 import info.nightscout.androidaps.utils.resources.ResourceHelper
 import info.nightscout.androidaps.utils.rx.AapsSchedulers
-import info.nightscout.shared.sharedPreferences.SP
+import info.nightscout.androidaps.utils.sharedPreferences.SP
 import info.nightscout.androidaps.utils.wizard.BolusWizard
-import info.nightscout.shared.SafeParse
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.plusAssign
 import java.text.DateFormat
@@ -64,7 +64,7 @@ class ActionStringHandler @Inject constructor(
     private val context: Context,
     private val constraintChecker: ConstraintChecker,
     private val profileFunction: ProfileFunction,
-    private val loop: Loop,
+    private val loopPlugin: LoopPlugin,
     private val wearPlugin: WearPlugin,
     private val fabricPrivacy: FabricPrivacy,
     private val commandQueue: CommandQueueProvider,
@@ -320,7 +320,7 @@ class ActionStringHandler @Inject constructor(
         } else if ("changeRequest" == act[0]) { ////////////////////////////////////////////// CHANGE REQUEST
             rTitle = rh.gs(R.string.openloop_newsuggestion)
             rAction = "changeRequest"
-            loop.lastRun?.let {
+            loopPlugin.lastRun?.let {
                 rMessage += it.constraintsProcessed
                 wearPlugin.requestChangeConfirmation(rTitle, rMessage, rAction)
                 lastSentTimestamp = System.currentTimeMillis()
@@ -424,7 +424,7 @@ class ActionStringHandler @Inject constructor(
         get() {
             var ret = ""
             // decide if enabled/disabled closed/open; what Plugin as APS?
-            if ((loop as PluginBase).isEnabled()) {
+            if (loopPlugin.isEnabled(loopPlugin.getType())) {
                 ret += if (constraintChecker.isClosedLoopAllowed().value()) {
                     "CLOSED LOOP\n"
                 } else {
@@ -432,7 +432,7 @@ class ActionStringHandler @Inject constructor(
                 }
                 val aps = activePlugin.activeAPS
                 ret += "APS: " + (aps as PluginBase).name
-                val lastRun = loop.lastRun
+                val lastRun = loopPlugin.lastRun
                 if (lastRun != null) {
                     ret += "\nLast Run: " + dateUtil.timeString(lastRun.lastAPSRun)
                     if (lastRun.lastTBREnact != 0L) ret += "\nLast Enact: " + dateUtil.timeString(lastRun.lastTBREnact)
@@ -505,8 +505,8 @@ class ActionStringHandler @Inject constructor(
             doFillBolus(amount)
         } else if ("temptarget" == act[0]) {
             val duration = SafeParse.stringToInt(act[2])
-            val low = SafeParse.stringToDouble(act[3])
-            val high = SafeParse.stringToDouble(act[4])
+            var low = SafeParse.stringToDouble(act[3])
+            var high = SafeParse.stringToDouble(act[4])
             generateTempTarget(duration, low, high)
         } else if ("wizard2" == act[0]) {
             if (lastBolusWizard != null) { //use last calculation as confirmed string matches
@@ -529,7 +529,7 @@ class ActionStringHandler @Inject constructor(
         } else if ("dismissoverviewnotification" == act[0]) {
             rxBus.send(EventDismissNotification(SafeParse.stringToInt(act[1])))
         } else if ("changeRequest" == act[0]) {
-            loop.acceptChangeRequest()
+            loopPlugin.acceptChangeRequest()
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.cancel(Constants.notificationID)
         }

@@ -16,19 +16,18 @@ import info.nightscout.androidaps.database.transactions.*
 import info.nightscout.androidaps.extensions.*
 import info.nightscout.androidaps.interfaces.ActivePlugin
 import info.nightscout.androidaps.interfaces.Config
-import info.nightscout.shared.logging.AAPSLogger
-import info.nightscout.shared.logging.LTag
+import info.nightscout.androidaps.logging.AAPSLogger
+import info.nightscout.androidaps.logging.LTag
 import info.nightscout.androidaps.logging.UserEntryLogger
 import info.nightscout.androidaps.plugins.bus.RxBus
 import info.nightscout.androidaps.plugins.general.overview.events.EventNewNotification
 import info.nightscout.androidaps.plugins.general.overview.notifications.Notification
-import info.nightscout.androidaps.plugins.pump.virtual.VirtualPumpPlugin
 import info.nightscout.androidaps.receivers.DataWorker
 import info.nightscout.androidaps.utils.DateUtil
 import info.nightscout.androidaps.utils.JsonHelper
 import info.nightscout.androidaps.utils.JsonHelper.safeGetLong
 import info.nightscout.androidaps.utils.buildHelper.BuildHelper
-import info.nightscout.shared.sharedPreferences.SP
+import info.nightscout.androidaps.utils.sharedPreferences.SP
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
@@ -48,7 +47,6 @@ class NSClientAddUpdateWorker(
     @Inject lateinit var activePlugin: ActivePlugin
     @Inject lateinit var rxBus: RxBus
     @Inject lateinit var uel: UserEntryLogger
-    @Inject lateinit var virtualPumpPlugin: VirtualPumpPlugin
 
     override fun doWork(): Result {
         val treatments = dataWorker.pickupJSONArray(inputData.getLong(DataWorker.STORE_KEY, -1))
@@ -59,11 +57,10 @@ class NSClientAddUpdateWorker(
 
         for (i in 0 until treatments.length()) {
             var json = treatments.getJSONObject(i)
-            aapsLogger.debug(LTag.DATABASE, "Received NS treatment: $json")
-
+            // new DB model
             val insulin = JsonHelper.safeGetDouble(json, "insulin")
             val carbs = JsonHelper.safeGetDouble(json, "carbs")
-            var eventType = JsonHelper.safeGetString(json, "eventType")
+            val eventType = JsonHelper.safeGetString(json, "eventType")
             if (eventType == null) {
                 aapsLogger.debug(LTag.NSCLIENT, "Wrong treatment. Ignoring : $json")
                 continue
@@ -99,10 +96,7 @@ class NSClientAddUpdateWorker(
                                     aapsLogger.debug(LTag.DATABASE, "Invalidated bolus $it")
                                 }
                                 result.updatedNsId.forEach {
-                                    aapsLogger.debug(LTag.DATABASE, "Updated nsId of bolus $it")
-                                }
-                                result.updated.forEach {
-                                    aapsLogger.debug(LTag.DATABASE, "Updated amount of bolus $it")
+                                    aapsLogger.debug(LTag.DATABASE, "Updated nsId bolus $it")
                                 }
                             }
                     } ?: aapsLogger.error("Error parsing bolus json $json")
@@ -132,13 +126,6 @@ class NSClientAddUpdateWorker(
                                     )
                                     aapsLogger.debug(LTag.DATABASE, "Invalidated carbs $it")
                                 }
-                                result.updated.forEach {
-                                    uel.log(Action.CARBS, Sources.NSClient,
-                                        ValueWithUnit.Timestamp(it.timestamp),
-                                        ValueWithUnit.Gram(it.amount.toInt())
-                                    )
-                                    aapsLogger.debug(LTag.DATABASE, "Updated carbs $it")
-                                }
                                 result.updatedNsId.forEach {
                                     aapsLogger.debug(LTag.DATABASE, "Updated nsId carbs $it")
                                 }
@@ -151,10 +138,7 @@ class NSClientAddUpdateWorker(
                 val ebJson = json.getJSONObject("extendedEmulated")
                 ebJson.put("_id", json.getString("_id"))
                 ebJson.put("isValid", json.getBoolean("isValid"))
-                ebJson.put("mills", mills)
                 json = ebJson
-                eventType = JsonHelper.safeGetString(json, "eventType")
-                virtualPumpPlugin.fakeDataDetected = true
             }
             when {
                 insulin > 0 || carbs > 0                                    -> Any()
@@ -282,23 +266,21 @@ class NSClientAddUpdateWorker(
                                         TherapyEvent.Type.INSULIN_CHANGE.text -> Action.RESERVOIR_CHANGE
                                         else                                  -> Action.CAREPORTAL
                                     }
-                                    result.inserted.forEach { therapyEvent ->
+                                    result.inserted.forEach {
                                         uel.log(action, Sources.NSClient,
-                                                therapyEvent.note ?: "",
-                                            ValueWithUnit.Timestamp(therapyEvent.timestamp),
-                                            ValueWithUnit.TherapyEventType(therapyEvent.type),
-                                            ValueWithUnit.fromGlucoseUnit(therapyEvent.glucose ?:0.0,therapyEvent.glucoseUnit.toString).takeIf { therapyEvent.glucose != null }
+                                            it.note ?: "",
+                                            ValueWithUnit.Timestamp(it.timestamp),
+                                            ValueWithUnit.TherapyEventType(it.type)
                                         )
-                                        aapsLogger.debug(LTag.DATABASE, "Inserted TherapyEvent $therapyEvent")
+                                        aapsLogger.debug(LTag.DATABASE, "Inserted TherapyEvent $it")
                                     }
-                                    result.invalidated.forEach { therapyEvent ->
+                                    result.invalidated.forEach {
                                         uel.log(Action.CAREPORTAL_REMOVED, Sources.NSClient,
-                                                therapyEvent.note ?: "",
-                                            ValueWithUnit.Timestamp(therapyEvent.timestamp),
-                                            ValueWithUnit.TherapyEventType(therapyEvent.type),
-                                            ValueWithUnit.fromGlucoseUnit(therapyEvent.glucose ?:0.0, therapyEvent.glucoseUnit.toString).takeIf { therapyEvent.glucose != null }
+                                            it.note ?: "",
+                                            ValueWithUnit.Timestamp(it.timestamp),
+                                            ValueWithUnit.TherapyEventType(it.type)
                                         )
-                                        aapsLogger.debug(LTag.DATABASE, "Invalidated TherapyEvent $therapyEvent")
+                                        aapsLogger.debug(LTag.DATABASE, "Invalidated TherapyEvent $it")
                                     }
                                     result.updatedNsId.forEach {
                                         aapsLogger.debug(LTag.DATABASE, "Updated nsId TherapyEvent $it")

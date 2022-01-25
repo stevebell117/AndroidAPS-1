@@ -17,4 +17,3 @@ include ':omnipod-dash'
 include ':diaconn'
 
 include ':openhumans'
-include ':shared'

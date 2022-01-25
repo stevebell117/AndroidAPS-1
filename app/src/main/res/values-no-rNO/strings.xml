@@ -12,6 +12,7 @@
     <string name="nav_resetdb">Nullstill databasene</string>
     <string name="reset_db_confirm">Vil du virkelig nullstille databasene?</string>
     <string name="nav_exit">Avslutt</string>
+    <string name="ns_sync_use_absolute_title">Bruk alltid absolutte verdier for basal</string>
     <string name="alert_dialog_permission_battery_optimization_failed">Det ser ikke ut som mobilen støtter registrering av apper som unntas fra batterioptimalisering - du kan oppleve ytelsesproblemer.</string>
     <string name="description_actions">Knapper for rask tilgang til ofte brukte funksjoner</string>
     <string name="description_config_builder">Brukt for innstilling av aktive plugin</string>
@@ -57,7 +58,7 @@
     <string name="treatments_wizard_tt_label">TT</string>
     <string name="treatments_wizard_carbs_label">Karbo</string>
     <string name="treatments_wizard_correction_label">Korr</string>
-    <string name="bolus_iob_label">Bolus IOB</string>
+    <string name="treatments_wizard_bolusiob_label">Bolus IOB</string>
     <string name="openapsma_run">Utfør nå</string>
     <string name="vitualpump_label">VIRTUELL PUMPE</string>
     <string name="openapsma_lastrun_label">Siste beregning</string>
@@ -96,7 +97,7 @@
     <string name="safety">Sikkerhet</string>
     <string name="openapsma_disabled">Plugin er deaktivert</string>
     <string name="constraints_violation">Brudd på begrensninger</string>
-    <string name="treatmentdeliveryerror">Er registrert en feil med bolus leveransen. Sjekk manuelt om den er levert og hvor mye!</string>
+    <string name="treatmentdeliveryerror">Mislykket bolus levering</string>
     <string name="setbasalquestion">Aksepter ny temp basal:</string>
     <string name="overview_treatment_label">Behandling</string>
     <string name="overview_calculator_label">Kalkulator</string>
@@ -122,9 +123,9 @@
     <string name="careportal_newnstreatment_other">Annet</string>
     <string name="careportal_newnstreatment_meter">Meter</string>
     <string name="careportal_newnstreatment_sensor">Sensor</string>
-    <string name="carb_time_label">Karbo tid</string>
+    <string name="careportal_newnstreatment_carbtime_label">Karbo tid</string>
     <string name="careportal_newnstreatment_duration_label">Varighet</string>
-    <string name="profile_label">Profil</string>
+    <string name="careportal_newnstreatment_profile_label">Profil</string>
     <string name="careportal_newnstreatment_glucosetype">Glukosetype</string>
     <string name="overview_tempbasal_button">Temp basal</string>
     <string name="overview_extendedbolus_button">Forlenget bolus</string>
@@ -355,7 +356,7 @@
     <string name="smscommunicator_wrongduration">Feil varighet</string>
     <string name="smscommunicator_loopsuspended">Loop er pauset</string>
     <string name="smscommunicator_loopresumed">Loop gjenopptatt</string>
-    <string name="bg_trend_label">15 min trend</string>
+    <string name="treatments_wizard_bgtrend_label">15 min trend</string>
     <string name="treatments_wizard_cob_label">COB</string>
     <string name="superbolus">Superbolus</string>
     <string name="ns_logappstartedevent">Logg app start til NS</string>
@@ -521,8 +522,8 @@
     <string name="enablesmbwithhightemptarget_summary">Aktiver SMB når det er aktive temp målverdier (trening, over 100 mg/dl eller 5,5 mmol/l)</string>
     <string name="overview_insulin_label">Insulin</string>
     <string name="overview_buttons_selection">Knapper</string>
-    <string name="show_calibration_button_summary">Sender en kalibrering til xDrip+ eller åpne kalibreringsdialogen i BYODA</string>
-    <string name="show_cgm_button_summary">Åpner xDrip+ eller BYODA, tilbake knappen får deg tilbake til AAPS</string>
+    <string name="show_calibration_button_summary">Sender en kalibrering til xDrip+ eller åpner en G5 kalibreringsdialog</string>
+    <string name="show_cgm_button_summary">Åpner xDrip+, tilbake knappen returnerer til AAPS</string>
     <string name="carb_increment_button_message">Antall karbohydrater som skal legges til når knappen trykkes</string>
     <string name="insulin_increment_button_message">Mengde insulin som skal legges til når knappen trykkes inn</string>
     <string name="error_starting_cgm">Kunne ikke starte CGM-programmet. Kontroller at det er installert.</string>
@@ -628,7 +629,7 @@
     <string name="exitwizard">Hopp over oppsettsveiviser</string>
     <string name="setupwizard_loop_description">Trykk på knappen under for å tillate at AndroidAPS foreslår/gjør basal endringer</string>
     <string name="setupwizard_sensitivity_description">Sensitivitets plugin brukes til å oppdage insulinsensitivitet og COB beregninger. For mer info, se:</string>
-    <string name="setupwizard_sensitivity_url">https://androidaps.readthedocs.io/en/latest/Configuration/Sensitivity-detection-and-COB.html</string>
+    <string name="setupwizard_sensitivity_url">https://github.com/MilosKozak/AndroidAPS/wiki/Sensitivity-detection-and-COB</string>
     <string name="nsclientinfotext">NSClient håndterer tilkobling til Nightscout. Du kan hoppe over denne delen nå, men du vil ikke kunne bestå læringsmålene før den er satt opp.</string>
     <string name="diawarning">Husk: nye insulinprofiler krever en DIA på minst 5t. DIA 5-6t på ny profil er lik DIA 3t på gamle insulinprofiler.</string>
     <string name="setupwizard_aps_description">Velg en av de tilgjengelige algoritmene. De er sortert fra eldst til nyest. De nyeste algoritmene er vanligvis mer kraftfull og aggressiv. Hvis du er en ny looper kan det være fornuftig å starte med AMA og ikke den siste. Ikke glem å lese OpenAPS dokumentasjonen og konfigurer algoritmen før den brukes.</string>
@@ -640,7 +641,6 @@
     <string name="needsystemwindowpermission">App trenger tillatelse til å bruke Varslinger for å vise meldinger</string>
     <string name="needlocationpermission">App trenger tilgang til Posisjon for å søke etter Bluetooth og Wifi enheter</string>
     <string name="needstoragepermission">App trenger tilgang til Lagring for lagre logg filer og eksportere innstillinger</string>
-    <string name="needconnectpermission">Appen trenger bluetooth tillatelse</string>
     <string name="request">Forespørsel</string>
     <string name="open_navigation">Åpne meny</string>
     <string name="close_navigation">Lukk meny</string>
@@ -650,8 +650,6 @@
     <string name="time_elapsed">Tid brukt</string>
     <string name="poctech">Poctech</string>
     <string name="description_source_poctech">Motta BS verdier fra Poctech app</string>
-    <string name="glunovo">Glunovo</string>
-    <string name="description_source_glunovo">Motta BS verdier fra Glunovo app</string>
     <string name="description_source_tomato">Motta BS verdier fra Tomato app (MiaoMiao enhet)</string>
     <string name="high_temptarget_raises_sensitivity_title">Høy temp target øker sensitiviteten</string>
     <string name="high_temptarget_raises_sensitivity_summary"><![CDATA[Øk sensitiviteten for temp target >= 100]]></string>
@@ -722,9 +720,9 @@
     <string name="application_expired">Applikasjon utløpt - oppdater</string>
     <string name="new_version_warning">Ny versjon tilgjengelig i minst %1$d dager! Systemet vil bytte til \"stopp innen lavt (LGS)\" etter %2$d dager og loop vil deaktiveres etter %3$d dager</string>
     <string name="twohours">2t</string>
-    <string name="dexcom_app_patched">BYODA</string>
-    <string name="dexcom_short">BYODA</string>
-    <string name="description_source_dexcom">Motta BS verdier fra \'Build Your Own Dexcom App\'.</string>
+    <string name="dexcom_app_patched">Dexcom App (patchet)</string>
+    <string name="dexcom_short">DXCM</string>
+    <string name="description_source_dexcom">Motta BS verdier fra den patchede Dexcom appen.</string>
     <string name="cobvsiob">COB vs IOB</string>
     <string name="bolusconstraintappliedwarn">Bolus begrensning brukt: %1$.2f E til %2$.2f E</string>
     <string name="slowabsorptiondetected"><![CDATA[<font color=\'%1$s\'>!!!!! Advarsel: Treg KH absorpsjon oppdaget: %2$d%% av tiden. Dobbeltsjekk din beregning. COB can være misvisende og du risikerer å få for mye insulin !!!!!</font>]]></string>
@@ -899,10 +897,4 @@
     <string name="view">Visning</string>
     <string name="errors">Feil</string>
     <string name="ns_sync_slow">Reduser opplastingshastighet</string>
-    <string name="data_status">BS data status</string>
-    <string name="recalculated_data_used">Rekalkulerte siste data</string>
-    <string name="bg_too_close">BS for nær:\n%1$s\n%2$s</string>
-    <string name="identification">Identifikasjon (e-post, Facebook eller Discord nick osv.)</string>
-    <string name="identification_not_set">Identifikasjon ikke satt i utviklermodus</string>
-    <string name="not_available_full">Ikke tilgjengelig</string>
 </resources>

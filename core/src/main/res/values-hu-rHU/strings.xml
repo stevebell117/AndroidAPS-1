@@ -2,7 +2,6 @@
 <resources>
     <!--    Keys-->
     <!--    General-->
-    <string name="pump_time_updated">Pumpa idő frissítve</string>
     <!--    Constraints-->
     <!--    Dialogs-->
     <!--    BlePreCheck-->
@@ -27,5 +26,4 @@
     <!-- WeekdayPicker -->
     <!-- User Entry -->
     <!-- HardLimits -->
-    <!-- Command Queue + readStatus reasons -->
 </resources>

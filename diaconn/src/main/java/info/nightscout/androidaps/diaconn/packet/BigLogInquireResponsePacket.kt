@@ -12,14 +12,14 @@ import info.nightscout.androidaps.events.EventPumpStatusChanged
 import info.nightscout.androidaps.interfaces.ActivePlugin
 import info.nightscout.androidaps.interfaces.PumpDescription
 import info.nightscout.androidaps.interfaces.PumpSync
-import info.nightscout.shared.logging.LTag
+import info.nightscout.androidaps.logging.LTag
 import info.nightscout.androidaps.plugins.bus.RxBus
 import info.nightscout.androidaps.plugins.pump.common.bolusInfo.DetailedBolusInfoStorage
 import info.nightscout.androidaps.plugins.pump.common.bolusInfo.TemporaryBasalStorage
 import info.nightscout.androidaps.plugins.pump.common.defs.PumpType
 import info.nightscout.androidaps.utils.T
 import info.nightscout.androidaps.utils.resources.ResourceHelper
-import info.nightscout.shared.sharedPreferences.SP
+import info.nightscout.androidaps.utils.sharedPreferences.SP
 import org.apache.commons.lang3.time.DateUtils
 import org.joda.time.DateTime
 import javax.inject.Inject
@@ -120,10 +120,6 @@ class BigLogInquireResponsePacket(
                     diaconnG8HistoryRecord.bolusType = "M" // meal bolus
                     diaconnG8HistoryRecord.stringValue = rh.gs(R.string.diaconn_g8_logmealsuccess)
                     diaconnHistoryRecordDao.createOrUpdate(diaconnG8HistoryRecord)
-                    if (!newRecord && detailedBolusInfo != null) {
-                        // detailedInfo can be from another similar record. Reinsert
-                        detailedBolusInfoStorage.add(detailedBolusInfo)
-                    }
                     status = "MEALBOLUSSUCCESS" + dateUtil.timeString(logDateTime)
                 }
 
@@ -148,10 +144,6 @@ class BigLogInquireResponsePacket(
                     diaconnG8HistoryRecord.bolusType = "M" // Meal bolus
                     diaconnG8HistoryRecord.stringValue = rh.gs(R.string.diaconn_g8_logmealfail)
                     diaconnHistoryRecordDao.createOrUpdate(diaconnG8HistoryRecord)
-                    if (!newRecord && detailedBolusInfo != null) {
-                        // detailedInfo can be from another similar record. Reinsert
-                        detailedBolusInfoStorage.add(detailedBolusInfo)
-                    }
                     status = "MEALBOLUSFAIL " + dateUtil.timeString(logDateTime)
                 }
 
@@ -177,10 +169,6 @@ class BigLogInquireResponsePacket(
                     diaconnG8HistoryRecord.bolusType = "B" // bolus
                     diaconnG8HistoryRecord.stringValue = rh.gs(R.string.diaconn_g8_logsuccess)
                     diaconnHistoryRecordDao.createOrUpdate(diaconnG8HistoryRecord)
-                    if (!newRecord && detailedBolusInfo != null) {
-                        // detailedInfo can be from another similar record. Reinsert
-                        detailedBolusInfoStorage.add(detailedBolusInfo)
-                    }
                     status = "BOLUSSUCCESS" + dateUtil.timeString(logDateTime)
                 }
 
@@ -208,10 +196,6 @@ class BigLogInquireResponsePacket(
                     diaconnG8HistoryRecord.bolusType = "B" // bolus
                     diaconnG8HistoryRecord.stringValue = getReasonName(pumplogKind, logItem.reason)
                     diaconnHistoryRecordDao.createOrUpdate(diaconnG8HistoryRecord)
-                    if (!newRecord && detailedBolusInfo != null) {
-                        // detailedInfo can be from another similar record. Reinsert
-                        detailedBolusInfoStorage.add(detailedBolusInfo)
-                    }
                     status = "BOLUSFAIL " + dateUtil.timeString(logDateTime)
                 }
 
@@ -327,10 +311,6 @@ class BigLogInquireResponsePacket(
                     diaconnG8HistoryRecord.bolusType = "D" // bolus
                     diaconnG8HistoryRecord.stringValue = rh.gs(R.string.diaconn_g8_logdualnormalsuccess)
                     diaconnHistoryRecordDao.createOrUpdate(diaconnG8HistoryRecord)
-                    if (!newRecord && detailedBolusInfo != null) {
-                        // detailedInfo can be from another similar record. Reinsert
-                        detailedBolusInfoStorage.add(detailedBolusInfo)
-                    }
                     status = "DUALBOLUS" + dateUtil.timeString(logDateTime)
                 }
 
@@ -566,7 +546,7 @@ class BigLogInquireResponsePacket(
                             pumpType = PumpType.DIACONN_G8,
                             pumpSerial = diaconnG8Pump.serialNo.toString()
                         )
-                        aapsLogger.debug(LTag.PUMPCOMM, (if (newRecord) "**NEW** " else "") + "EVENT NEEDLECHANGE(" + pumplogKind + ") " + dateUtil.dateAndTimeString(logDateTime) + " (" + logDateTime + ")" + " Amount: " + logItem.remainAmount / 100.0 + "U")
+                        aapsLogger.debug(LTag.PUMPCOMM,  (if (newRecord) "**NEW** " else "") + "EVENT NEEDLECHANGE(" + pumplogKind + ") " + dateUtil.dateAndTimeString(logDateTime) + " (" + logDateTime + ")" + " Amount: " + logItem.remainAmount / 100.0 + "U")
                     }
 
                     diaconnG8HistoryRecord.code = RecordTypes.RECORD_TYPE_REFILL
@@ -707,7 +687,7 @@ class BigLogInquireResponsePacket(
                                 pumpType = PumpType.DIACONN_G8,
                                 pumpSerial = diaconnG8Pump.serialNo.toString()
                             )
-                            aapsLogger.debug(LTag.PUMPCOMM, (if (newRecord) "**NEW** " else "") + "EVENT BATTERYCHANGE(" + pumplogKind + ") " + dateUtil.dateAndTimeString(logDateTime) + " (" + logDateTime + ")" + " remainAmount: " + logItem.batteryRemain.toInt() + "%")
+                            aapsLogger.debug(LTag.PUMPCOMM,  (if (newRecord) "**NEW** " else "") + "EVENT BATTERYCHANGE(" + pumplogKind + ") " + dateUtil.dateAndTimeString(logDateTime) + " (" + logDateTime + ")" + " remainAmount: " + logItem.batteryRemain.toInt() + "%")
                         }
                     }
                     status = "RESET " + dateUtil.timeString(logDateTime)

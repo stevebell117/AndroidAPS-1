@@ -23,8 +23,8 @@ import info.nightscout.androidaps.events.EventBolusRequested
 import info.nightscout.androidaps.events.EventProfileSwitchChanged
 import info.nightscout.androidaps.extensions.getCustomizedName
 import info.nightscout.androidaps.interfaces.*
-import info.nightscout.shared.logging.AAPSLogger
-import info.nightscout.shared.logging.LTag
+import info.nightscout.androidaps.logging.AAPSLogger
+import info.nightscout.androidaps.logging.LTag
 import info.nightscout.androidaps.plugins.bus.RxBus
 import info.nightscout.androidaps.plugins.configBuilder.ConstraintChecker
 import info.nightscout.androidaps.plugins.general.overview.events.EventDismissBolusProgressIfRunning
@@ -33,14 +33,13 @@ import info.nightscout.androidaps.plugins.general.overview.events.EventNewNotifi
 import info.nightscout.androidaps.plugins.general.overview.notifications.Notification
 import info.nightscout.androidaps.queue.commands.*
 import info.nightscout.androidaps.queue.commands.Command.CommandType
-import info.nightscout.androidaps.utils.AndroidPermission
 import info.nightscout.androidaps.utils.DateUtil
 import info.nightscout.androidaps.utils.FabricPrivacy
 import info.nightscout.androidaps.utils.HtmlHelper
 import info.nightscout.androidaps.utils.buildHelper.BuildHelper
 import info.nightscout.androidaps.utils.resources.ResourceHelper
 import info.nightscout.androidaps.utils.rx.AapsSchedulers
-import info.nightscout.shared.sharedPreferences.SP
+import info.nightscout.androidaps.utils.sharedPreferences.SP
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.plusAssign
 import io.reactivex.rxkotlin.subscribeBy
@@ -50,7 +49,7 @@ import javax.inject.Singleton
 
 @OpenForTesting
 @Singleton
-class CommandQueueImplementation @Inject constructor(
+class CommandQueue @Inject constructor(
     private val injector: HasAndroidInjector,
     private val aapsLogger: AAPSLogger,
     private val rxBus: RxBus,
@@ -65,9 +64,8 @@ class CommandQueueImplementation @Inject constructor(
     private val dateUtil: DateUtil,
     private val repository: AppRepository,
     private val fabricPrivacy: FabricPrivacy,
-    private val config: Config,
-    private val androidPermission: AndroidPermission
-) : CommandQueue {
+    private val config: Config
+) : CommandQueueProvider {
 
     private val disposable = CompositeDisposable()
 
@@ -81,40 +79,39 @@ class CommandQueueImplementation @Inject constructor(
             .toObservable(EventProfileSwitchChanged::class.java)
             .observeOn(aapsSchedulers.io)
             .subscribe({
-                           if (config.NSCLIENT) { // Effective profileswitch should be synced over NS, do not create EffectiveProfileSwitch here
-                               return@subscribe
-                           }
-                           aapsLogger.debug(LTag.PROFILE, "onEventProfileSwitchChanged")
-                           profileFunction.getRequestedProfile()?.let {
-                               setProfile(ProfileSealed.PS(it), it.interfaceIDs.nightscoutId != null, object : Callback() {
-                                   override fun run() {
-                                       if (!result.success) {
-                                           ErrorHelperActivity.runAlarm(context, result.comment, rh.gs(R.string.failedupdatebasalprofile), R.raw.boluserror)
-                                       } else {
-                                           val nonCustomized = ProfileSealed.PS(it).convertToNonCustomizedProfile(dateUtil)
-                                           EffectiveProfileSwitch(
-                                               timestamp = dateUtil.now(),
-                                               basalBlocks = nonCustomized.basalBlocks,
-                                               isfBlocks = nonCustomized.isfBlocks,
-                                               icBlocks = nonCustomized.icBlocks,
-                                               targetBlocks = nonCustomized.targetBlocks,
-                                               glucoseUnit = if (it.glucoseUnit == ProfileSwitch.GlucoseUnit.MGDL) EffectiveProfileSwitch.GlucoseUnit.MGDL else EffectiveProfileSwitch.GlucoseUnit.MMOL,
-                                               originalProfileName = it.profileName,
-                                               originalCustomizedName = it.getCustomizedName(),
-                                               originalTimeshift = it.timeshift,
-                                               originalPercentage = it.percentage,
-                                               originalDuration = it.duration,
-                                               originalEnd = it.end,
-                                               insulinConfiguration = it.insulinConfiguration
-                                           ).also { eps ->
-                                               repository.createEffectiveProfileSwitch(eps)
-                                               aapsLogger.debug(LTag.DATABASE, "Inserted EffectiveProfileSwitch $eps")
-                                           }
-                                       }
-                                   }
-                               })
-                           }
-                       }, fabricPrivacy::logException)
+                if (config.NSCLIENT) { // Effective profileswitch should be synced over NS, do not create EffectiveProfileSwitch here
+                    return@subscribe
+                }
+                aapsLogger.debug(LTag.PROFILE, "onProfileSwitch")
+                profileFunction.getRequestedProfile()?.let {
+                    val nonCustomized = ProfileSealed.PS(it).convertToNonCustomizedProfile(dateUtil)
+                    setProfile(ProfileSealed.Pure(nonCustomized), it.interfaceIDs.nightscoutId != null, object : Callback() {
+                        override fun run() {
+                            if (!result.success) {
+                                ErrorHelperActivity.runAlarm(context, result.comment, rh.gs(R.string.failedupdatebasalprofile), R.raw.boluserror)
+                            } else {
+                                repository.createEffectiveProfileSwitch(
+                                    EffectiveProfileSwitch(
+                                        timestamp = dateUtil.now(),
+                                        basalBlocks = nonCustomized.basalBlocks,
+                                        isfBlocks = nonCustomized.isfBlocks,
+                                        icBlocks = nonCustomized.icBlocks,
+                                        targetBlocks = nonCustomized.targetBlocks,
+                                        glucoseUnit = if (it.glucoseUnit == ProfileSwitch.GlucoseUnit.MGDL) EffectiveProfileSwitch.GlucoseUnit.MGDL else EffectiveProfileSwitch.GlucoseUnit.MMOL,
+                                        originalProfileName = it.profileName,
+                                        originalCustomizedName = it.getCustomizedName(),
+                                        originalTimeshift = it.timeshift,
+                                        originalPercentage = it.percentage,
+                                        originalDuration = it.duration,
+                                        originalEnd = it.end,
+                                        insulinConfiguration = it.insulinConfiguration
+                                    )
+                                )
+                            }
+                        }
+                    })
+                }
+            }, fabricPrivacy::logException)
     }
 
     private fun executingNowError(): PumpEnactResult =
@@ -146,7 +143,7 @@ class CommandQueueImplementation @Inject constructor(
 
     @Synchronized
     private fun add(command: Command) {
-        aapsLogger.debug(LTag.PUMPQUEUE, "Adding: " + command.javaClass.simpleName + " - " + command.log())
+        aapsLogger.debug(LTag.PUMPQUEUE, "Adding: " + command.javaClass.simpleName + " - " + command.status())
         synchronized(queue) { queue.add(command) }
     }
 
@@ -179,7 +176,7 @@ class CommandQueueImplementation @Inject constructor(
     @Synchronized fun notifyAboutNewCommand() {
         waitForFinishedThread()
         if (thread == null || thread!!.state == Thread.State.TERMINATED) {
-            thread = QueueThread(this, context, aapsLogger, rxBus, activePlugin, rh, sp, androidPermission, config)
+            thread = QueueThread(this, context, aapsLogger, rxBus, activePlugin, rh, sp)
             thread!!.start()
             aapsLogger.debug(LTag.PUMPQUEUE, "Starting new thread")
         } else {
@@ -198,11 +195,9 @@ class CommandQueueImplementation @Inject constructor(
 
     override fun independentConnect(reason: String, callback: Callback?) {
         aapsLogger.debug(LTag.PUMPQUEUE, "Starting new queue")
-        val tempCommandQueue = CommandQueueImplementation(
-            injector, aapsLogger, rxBus, aapsSchedulers, rh,
-            constraintChecker, profileFunction, activePlugin, context, sp,
-            buildHelper, dateUtil, repository, fabricPrivacy, config, androidPermission
-        )
+        val tempCommandQueue = CommandQueue(injector, aapsLogger, rxBus, aapsSchedulers, rh,
+                                            constraintChecker, profileFunction, activePlugin, context, sp,
+                                            buildHelper, dateUtil, repository, fabricPrivacy, config)
         tempCommandQueue.readStatus(reason, callback)
         tempCommandQueue.disposable.clear()
     }
@@ -226,37 +221,27 @@ class CommandQueueImplementation @Inject constructor(
         // Check if pump store carbs
         // If not, it's not necessary add command to the queue and initiate connection
         // Assuming carbs in the future and carbs with duration are NOT stores anyway
-
-        var carbsRunnable = Runnable { }
-        val originalCarbs = detailedBolusInfo.carbs
         if ((detailedBolusInfo.carbs > 0) &&
             (!activePlugin.activePump.pumpDescription.storesCarbInfo ||
                 detailedBolusInfo.carbsDuration != 0L ||
                 (detailedBolusInfo.carbsTimestamp ?: detailedBolusInfo.timestamp) > dateUtil.now())
         ) {
-            carbsRunnable = Runnable {
-                aapsLogger.debug(LTag.PUMPQUEUE, "Going to store carbs")
-                detailedBolusInfo.carbs = originalCarbs
-                disposable += repository.runTransactionForResult(detailedBolusInfo.insertCarbsTransaction())
-                    .subscribeBy(
-                        onSuccess = { result ->
-                            result.inserted.forEach { aapsLogger.debug(LTag.DATABASE, "Inserted carbs $it") }
-                            callback?.result(PumpEnactResult(injector).enacted(false).success(true))?.run()
+            disposable += repository.runTransactionForResult(detailedBolusInfo.insertCarbsTransaction())
+                .subscribeBy(
+                    onSuccess = { result ->
+                        result.inserted.forEach { aapsLogger.debug(LTag.DATABASE, "Inserted carbs $it") }
+                        callback?.result(PumpEnactResult(injector).enacted(false).success(true))?.run()
 
-                        },
-                        onError = {
-                            aapsLogger.error(LTag.DATABASE, "Error while saving carbs", it)
-                            callback?.result(PumpEnactResult(injector).enacted(false).success(false))?.run()
-                        }
-                    )
-            }
+                    },
+                    onError = {
+                        aapsLogger.error(LTag.DATABASE, "Error while saving carbs", it)
+                        callback?.result(PumpEnactResult(injector).enacted(false).success(false))?.run()
+                    }
+                )
             // Do not process carbs anymore
             detailedBolusInfo.carbs = 0.0
             // if no insulin just exit
-            if (detailedBolusInfo.insulin == 0.0) {
-                carbsRunnable.run() // store carbs
-                return true
-            }
+            if (detailedBolusInfo.insulin == 0.0) return true
 
         }
         var type = if (detailedBolusInfo.bolusType == DetailedBolusInfo.BolusType.SMB) CommandType.SMB_BOLUS else CommandType.BOLUS
@@ -292,10 +277,10 @@ class CommandQueueImplementation @Inject constructor(
         if (detailedBolusInfo.bolusType == DetailedBolusInfo.BolusType.SMB) {
             add(CommandSMBBolus(injector, detailedBolusInfo, callback))
         } else {
-            add(CommandBolus(injector, detailedBolusInfo, callback, type, carbsRunnable))
+            add(CommandBolus(injector, detailedBolusInfo, callback, type))
             if (type == CommandType.BOLUS) { // Bring up bolus progress dialog (start here, so the dialog is shown when the bolus is requested,
                 // not when the Bolus command is starting. The command closes the dialog upon completion).
-                showBolusProgressDialog(detailedBolusInfo)
+                showBolusProgressDialog(detailedBolusInfo.insulin, detailedBolusInfo.context)
                 // Notify Wear about upcoming bolus
                 rxBus.send(EventBolusRequested(detailedBolusInfo.insulin))
             }
@@ -322,7 +307,7 @@ class CommandQueueImplementation @Inject constructor(
     @Synchronized
     override fun cancelAllBoluses() {
         if (!isRunning(CommandType.BOLUS)) {
-            rxBus.send(EventDismissBolusProgressIfRunning(PumpEnactResult(injector).success(true).enacted(false), null))
+            rxBus.send(EventDismissBolusProgressIfRunning(PumpEnactResult(injector).success(true).enacted(false)))
         }
         removeAll(CommandType.BOLUS)
         removeAll(CommandType.SMB_BOLUS)
@@ -404,11 +389,6 @@ class CommandQueueImplementation @Inject constructor(
 
     // returns true if command is queued
     override fun setProfile(profile: Profile, hasNsId: Boolean, callback: Callback?): Boolean {
-        if (isRunning(CommandType.BASAL_PROFILE)) {
-            aapsLogger.debug(LTag.PUMPQUEUE, "Command is already executed")
-            callback?.result(PumpEnactResult(injector).success(true).enacted(false))?.run()
-            return false
-        }
         if (isThisProfileSet(profile) && repository.getEffectiveProfileSwitchActiveAt(dateUtil.now()).blockingGet() is ValueWrapper.Existing) {
             aapsLogger.debug(LTag.PUMPQUEUE, "Correct profile already set")
             callback?.result(PumpEnactResult(injector).success(true).enacted(false))?.run()
@@ -593,16 +573,14 @@ class CommandQueueImplementation @Inject constructor(
         return result
     }
 
-    private fun showBolusProgressDialog(detailedBolusInfo: DetailedBolusInfo) {
-        if (detailedBolusInfo.context != null) {
+    private fun showBolusProgressDialog(insulin: Double, ctx: Context?) {
+        if (ctx != null) {
             val bolusProgressDialog = BolusProgressDialog()
-            bolusProgressDialog.setInsulin(detailedBolusInfo.insulin)
-            bolusProgressDialog.setTimestamp(detailedBolusInfo.timestamp)
-            bolusProgressDialog.show((detailedBolusInfo.context as AppCompatActivity).supportFragmentManager, "BolusProgress")
+            bolusProgressDialog.setInsulin(insulin)
+            bolusProgressDialog.show((ctx as AppCompatActivity).supportFragmentManager, "BolusProgress")
         } else {
             val i = Intent()
-            i.putExtra("insulin", detailedBolusInfo.insulin)
-            i.putExtra("timestamp", detailedBolusInfo.timestamp)
+            i.putExtra("insulin", insulin)
             i.setClass(context, BolusProgressHelperActivity::class.java)
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(i)

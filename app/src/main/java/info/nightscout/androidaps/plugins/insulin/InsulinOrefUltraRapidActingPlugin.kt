@@ -2,10 +2,9 @@ package info.nightscout.androidaps.plugins.insulin
 
 import dagger.android.HasAndroidInjector
 import info.nightscout.androidaps.R
-import info.nightscout.androidaps.interfaces.Config
 import info.nightscout.androidaps.interfaces.Insulin
 import info.nightscout.androidaps.interfaces.ProfileFunction
-import info.nightscout.shared.logging.AAPSLogger
+import info.nightscout.androidaps.logging.AAPSLogger
 import info.nightscout.androidaps.plugins.bus.RxBus
 import info.nightscout.androidaps.utils.resources.ResourceHelper
 import org.json.JSONObject
@@ -20,10 +19,8 @@ class InsulinOrefUltraRapidActingPlugin @Inject constructor(
     injector: HasAndroidInjector,
     rh: ResourceHelper,
     profileFunction: ProfileFunction,
-    rxBus: RxBus,
-    aapsLogger: AAPSLogger,
-    config: Config
-) : InsulinOrefBasePlugin(injector, rh, profileFunction, rxBus, aapsLogger, config) {
+    rxBus: RxBus, aapsLogger: AAPSLogger
+) : InsulinOrefBasePlugin(injector, rh, profileFunction, rxBus, aapsLogger) {
 
     override val id get(): Insulin.InsulinType = Insulin.InsulinType.OREF_ULTRA_RAPID_ACTING
     override val friendlyName get(): String = rh.gs(R.string.ultrarapid_oref)

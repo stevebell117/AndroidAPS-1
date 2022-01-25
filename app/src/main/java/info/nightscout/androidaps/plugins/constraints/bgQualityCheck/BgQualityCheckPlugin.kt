@@ -3,21 +3,19 @@ package info.nightscout.androidaps.plugins.constraints.bgQualityCheck
 import dagger.android.HasAndroidInjector
 import info.nightscout.androidaps.R
 import info.nightscout.androidaps.interfaces.*
+import info.nightscout.androidaps.logging.AAPSLogger
+import info.nightscout.androidaps.logging.LTag
 import info.nightscout.androidaps.plugins.bus.RxBus
 import info.nightscout.androidaps.plugins.iob.iobCobCalculator.events.EventBucketedDataCreated
-import info.nightscout.androidaps.utils.DateUtil
 import info.nightscout.androidaps.utils.FabricPrivacy
-import info.nightscout.androidaps.utils.T
 import info.nightscout.androidaps.utils.resources.ResourceHelper
 import info.nightscout.androidaps.utils.rx.AapsSchedulers
-import info.nightscout.shared.logging.AAPSLogger
-import info.nightscout.shared.logging.LTag
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.plusAssign
+import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.abs
-import kotlin.math.min
 
 @Singleton
 class BgQualityCheckPlugin @Inject constructor(
@@ -27,8 +25,7 @@ class BgQualityCheckPlugin @Inject constructor(
     private val rxBus: RxBus,
     private val iobCobCalculator: IobCobCalculator,
     private val aapsSchedulers: AapsSchedulers,
-    private val fabricPrivacy: FabricPrivacy,
-    private val dateUtil: DateUtil
+    private val fabricPrivacy: FabricPrivacy
 ) : PluginBase(
     PluginDescription()
         .mainType(PluginType.CONSTRAINTS)
@@ -64,23 +61,22 @@ class BgQualityCheckPlugin @Inject constructor(
     var state: State = State.UNKNOWN
     var message: String = ""
 
-    // Fallback to LGS if BG values are doubled
-    override fun applyMaxIOBConstraints(maxIob: Constraint<Double>): Constraint<Double> =
+    // Return false if BG values are doubled
+    @Suppress("ReplaceGetOrSet")
+    override fun isLoopInvocationAllowed(value: Constraint<Boolean>): Constraint<Boolean> {
         if (state == State.DOUBLED)
-            maxIob.set(aapsLogger, 0.0, "Doubled values in BGSource", this)
-        else
-            maxIob
+            value.set(aapsLogger, false, "Doubled values in BGSource", this)
+        return value
+    }
 
-    @Suppress("CascadeIf")
     fun processBgData() {
         val readings = iobCobCalculator.ads.getBgReadingsDataTableCopy()
         for (i in readings.indices)
-        // Deltas are calculated from last ~50 min. Detect RED state only on this interval
-            if (i < min(readings.size - 2, 10))
-                if (abs(readings[i].timestamp - readings[i + 1].timestamp) <= T.secs(20).msecs()) {
+            if (i < readings.size - 2)
+                if (abs(readings[i].timestamp - readings[i + 1].timestamp) <= 1000) {
                     state = State.DOUBLED
-                    aapsLogger.debug(LTag.CORE, "BG similar. Turning on red state.\n${readings[i]}\n${readings[i + 1]}")
-                    message = rh.gs(R.string.bg_too_close, dateUtil.dateAndTimeAndSecondsString(readings[i].timestamp), dateUtil.dateAndTimeAndSecondsString(readings[i + 1].timestamp))
+                    aapsLogger.debug(LTag.CORE, "BG similar. Turning on red state.\n${readings[i]}\n${readings[i+1]}")
+                    message = rh.gs(R.string.bg_too_close, readings[i].toString(), readings[i+1].toString())
                     return
                 }
         if (iobCobCalculator.ads.lastUsed5minCalculation == true) {

@@ -22,7 +22,6 @@ android {
 
 dependencies {
     implementation project(':core')
-    implementation project(':shared')
 
     api "androidx.room:room-ktx:$room_version"
     api "androidx.room:room-runtime:$room_version"

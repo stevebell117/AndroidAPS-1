@@ -2,7 +2,6 @@ package info.nightscout.androidaps.plugins.source
 
 import android.os.Handler
 import android.os.HandlerThread
-import android.os.SystemClock
 import dagger.android.HasAndroidInjector
 import info.nightscout.androidaps.R
 import info.nightscout.androidaps.database.AppRepository
@@ -12,12 +11,12 @@ import info.nightscout.androidaps.interfaces.BgSource
 import info.nightscout.androidaps.interfaces.PluginBase
 import info.nightscout.androidaps.interfaces.PluginDescription
 import info.nightscout.androidaps.interfaces.PluginType
-import info.nightscout.shared.logging.AAPSLogger
-import info.nightscout.shared.logging.LTag
+import info.nightscout.androidaps.logging.AAPSLogger
+import info.nightscout.androidaps.logging.LTag
 import info.nightscout.androidaps.utils.T
 import info.nightscout.androidaps.utils.XDripBroadcast
 import info.nightscout.androidaps.utils.resources.ResourceHelper
-import info.nightscout.shared.sharedPreferences.SP
+import info.nightscout.androidaps.utils.sharedPreferences.SP
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.plusAssign
 import java.util.*
@@ -46,7 +45,7 @@ class RandomBgPlugin @Inject constructor(
     aapsLogger, rh, injector
 ), BgSource {
 
-    private val handler = Handler(HandlerThread(this::class.simpleName + "Handler").also { it.start() }.looper)
+    private val loopHandler: Handler = Handler(HandlerThread(RandomBgPlugin::class.java.simpleName + "Handler").also { it.start() }.looper)
     private lateinit var refreshLoop: Runnable
 
     companion object {
@@ -59,7 +58,7 @@ class RandomBgPlugin @Inject constructor(
 
     init {
         refreshLoop = Runnable {
-            handler.postDelayed(refreshLoop, T.mins(interval).msecs())
+            loopHandler.postDelayed(refreshLoop, T.mins(interval).msecs())
             handleNewData()
         }
     }
@@ -75,17 +74,13 @@ class RandomBgPlugin @Inject constructor(
 
     override fun onStart() {
         super.onStart()
-        val cal = GregorianCalendar()
-        cal[Calendar.MILLISECOND] = 0
-        cal[Calendar.SECOND] = 0
-        cal[Calendar.MINUTE] -= cal[Calendar.MINUTE] % 5
-        handler.postAtTime(refreshLoop, SystemClock.uptimeMillis() + cal.timeInMillis + T.mins(5).msecs() + 1000 - System.currentTimeMillis())
+        loopHandler.postDelayed(refreshLoop, T.mins(interval).msecs())
         disposable.clear()
     }
 
     override fun onStop() {
         super.onStop()
-        handler.removeCallbacks(refreshLoop)
+        loopHandler.removeCallbacks(refreshLoop)
     }
 
     override fun specialEnableCondition(): Boolean {

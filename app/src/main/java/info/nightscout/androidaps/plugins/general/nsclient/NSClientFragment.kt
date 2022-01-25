@@ -20,9 +20,8 @@ import info.nightscout.androidaps.utils.FabricPrivacy
 import info.nightscout.androidaps.utils.alertDialogs.OKDialog
 import info.nightscout.androidaps.utils.resources.ResourceHelper
 import info.nightscout.androidaps.utils.rx.AapsSchedulers
-import info.nightscout.shared.sharedPreferences.SP
+import info.nightscout.androidaps.utils.sharedPreferences.SP
 import io.reactivex.disposables.CompositeDisposable
-import io.reactivex.rxkotlin.plusAssign
 import javax.inject.Inject
 
 class NSClientFragment : DaggerFragment() {
@@ -73,8 +72,8 @@ class NSClientFragment : DaggerFragment() {
             context?.let { context ->
                 OKDialog.showConfirmation(context, rh.gs(R.string.nsclientinternal),
                                           rh.gs(R.string.full_sync_comment), Runnable {
-                        dataSyncSelector.resetToNextFullSync()
-                    })
+                    dataSyncSelector.resetToNextFullSync()
+                })
             }
         }
         binding.fullSync.paintFlags = binding.fullSync.paintFlags or Paint.UNDERLINE_TEXT_FLAG
@@ -82,10 +81,11 @@ class NSClientFragment : DaggerFragment() {
 
     @Synchronized override fun onResume() {
         super.onResume()
-        disposable += rxBus
+        disposable.add(rxBus
             .toObservable(EventNSClientUpdateGUI::class.java)
             .observeOn(aapsSchedulers.main)
             .subscribe({ updateGui() }, fabricPrivacy::logException)
+        )
         updateGui()
     }
 
@@ -102,7 +102,6 @@ class NSClientFragment : DaggerFragment() {
         if (nsClientPlugin.autoscroll) binding.logScrollview.fullScroll(ScrollView.FOCUS_DOWN)
         binding.url.text = nsClientPlugin.url()
         binding.status.text = nsClientPlugin.status
-        val size = dataSyncSelector.queueSize()
-        binding.queue.text = if (size >= 0) size.toString() else rh.gs(R.string.notavailable)
+        binding.queue.text = dataSyncSelector.queueSize().toString()
     }
 }

@@ -106,10 +106,7 @@ class EditTriggerDialog : DialogFragmentWithDate() {
         if (where is TriggerConnector) {
             for (i in where.list) {
                 if (i == what) return where
-                if (i is TriggerConnector) {
-                    val found = findParent(i, what)
-                    if (found != null) return found
-                }
+                if (i is TriggerConnector) return findParent(i, what)
             }
         }
         return null

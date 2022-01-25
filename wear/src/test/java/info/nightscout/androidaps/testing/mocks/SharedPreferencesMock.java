@@ -8,7 +8,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-@SuppressWarnings({"ConstantConditions", "unchecked"})
 public class SharedPreferencesMock implements SharedPreferences {
 
     private final EditorInternals editor = new EditorInternals();

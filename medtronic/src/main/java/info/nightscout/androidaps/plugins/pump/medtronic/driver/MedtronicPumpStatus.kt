@@ -13,7 +13,7 @@ import info.nightscout.androidaps.plugins.pump.medtronic.defs.BatteryType
 import info.nightscout.androidaps.plugins.pump.medtronic.defs.MedtronicDeviceType
 import info.nightscout.androidaps.plugins.pump.medtronic.util.MedtronicConst
 import info.nightscout.androidaps.utils.resources.ResourceHelper
-import info.nightscout.shared.sharedPreferences.SP
+import info.nightscout.androidaps.utils.sharedPreferences.SP
 import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -57,7 +57,7 @@ class MedtronicPumpStatus @Inject constructor(private val rh: ResourceHelper,
         if (medtronicDeviceTypeMap.isEmpty()) createMedtronicDeviceTypeMap()
         lastConnection = sp.getLong(MedtronicConst.Statistics.LastGoodPumpCommunicationTime, 0L)
         lastDataTime = lastConnection
-        val serial = sp.getStringOrNull(MedtronicConst.Prefs.PumpSerial, null)
+        var serial = sp.getStringOrNull(MedtronicConst.Prefs.PumpSerial, null)
         if (serial != null) {
             serialNumber = serial
         }
@@ -104,7 +104,7 @@ class MedtronicPumpStatus @Inject constructor(private val rh: ResourceHelper,
     private var batteryTypeByDescMap: MutableMap<String, BatteryType?> = HashMap()
 
     fun getBatteryTypeByDescription(batteryTypeStr: String?): BatteryType? {
-        if (batteryTypeByDescMap.isEmpty()) {
+        if (batteryTypeByDescMap.size == 0) {
             for (value in BatteryType.values()) {
                 batteryTypeByDescMap[rh.gs(value.description)] = value
             }

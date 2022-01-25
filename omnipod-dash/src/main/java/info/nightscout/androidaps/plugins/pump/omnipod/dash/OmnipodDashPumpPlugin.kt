@@ -2,7 +2,7 @@ package info.nightscout.androidaps.plugins.pump.omnipod.dash
 
 import android.content.Context
 import android.os.Handler
-import android.os.HandlerThread
+import android.os.Looper
 import android.text.format.DateFormat
 import dagger.android.HasAndroidInjector
 import info.nightscout.androidaps.activities.ErrorHelperActivity.Companion.runAlarm
@@ -16,8 +16,8 @@ import info.nightscout.androidaps.extensions.convertedToAbsolute
 import info.nightscout.androidaps.extensions.plannedRemainingMinutes
 import info.nightscout.androidaps.extensions.toStringFull
 import info.nightscout.androidaps.interfaces.*
-import info.nightscout.shared.logging.AAPSLogger
-import info.nightscout.shared.logging.LTag
+import info.nightscout.androidaps.logging.AAPSLogger
+import info.nightscout.androidaps.logging.LTag
 import info.nightscout.androidaps.plugins.bus.RxBus
 import info.nightscout.androidaps.plugins.common.ManufacturerType
 import info.nightscout.androidaps.plugins.general.actions.defs.CustomAction
@@ -52,12 +52,13 @@ import info.nightscout.androidaps.utils.T
 import info.nightscout.androidaps.utils.TimeChangeType
 import info.nightscout.androidaps.utils.resources.ResourceHelper
 import info.nightscout.androidaps.utils.rx.AapsSchedulers
-import info.nightscout.shared.sharedPreferences.SP
+import info.nightscout.androidaps.utils.sharedPreferences.SP
 import io.reactivex.Completable
 import io.reactivex.Single
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.plusAssign
 import org.json.JSONObject
+import java.lang.Exception
 import java.time.Duration
 import java.time.ZonedDateTime
 import java.util.*
@@ -90,7 +91,7 @@ class OmnipodDashPumpPlugin @Inject constructor(
     @Volatile var bolusCanceled = false
     @Volatile var bolusDeliveryInProgress = false
 
-    private val handler = Handler(HandlerThread(this::class.simpleName + "Handler").also { it.start() }.looper)
+    private val handler: Handler = Handler(Looper.getMainLooper())
     private lateinit var statusChecker: Runnable
     private var nextPodWarningCheck: Long = 0
     @Volatile var stopConnecting: CountDownLatch? = null
@@ -543,6 +544,12 @@ class OmnipodDashPumpPlugin @Inject constructor(
         try {
             bolusDeliveryInProgress = true
             aapsLogger.info(LTag.PUMP, "Delivering treatment: $detailedBolusInfo $bolusCanceled")
+            val beepsConfigurationKey = if (detailedBolusInfo.bolusType == DetailedBolusInfo.BolusType.SMB)
+                R.string.key_omnipod_common_smb_beeps_enabled
+            else
+                R.string.key_omnipod_common_bolus_beeps_enabled
+            val bolusBeeps = sp.getBoolean(beepsConfigurationKey, false)
+            R.string.key_omnipod_common_smb_beeps_enabled
             if (detailedBolusInfo.carbs > 0 ||
                 detailedBolusInfo.insulin == 0.0
             ) {
@@ -559,24 +566,10 @@ class OmnipodDashPumpPlugin @Inject constructor(
                     .success(false)
                     .enacted(false)
                     .bolusDelivered(0.0)
-                    .comment(rh.gs(R.string.omnipod_dash_not_enough_insulin))
+                    .comment("Not enough insulin in the reservoir")
             }
-            if (podStateManager.deliveryStatus == DeliveryStatus.BOLUS_AND_BASAL_ACTIVE ||
-                podStateManager.deliveryStatus == DeliveryStatus.BOLUS_AND_TEMP_BASAL_ACTIVE) {
-                return PumpEnactResult(injector)
-                    .success(false)
-                    .enacted(false)
-                    .bolusDelivered(0.0)
-                    .comment(rh.gs(R.string.omnipod_dash_bolus_already_in_progress))
-            }
-
             var deliveredBolusAmount = 0.0
 
-            val beepsConfigurationKey = if (detailedBolusInfo.bolusType == DetailedBolusInfo.BolusType.SMB)
-                R.string.key_omnipod_common_smb_beeps_enabled
-            else
-                R.string.key_omnipod_common_bolus_beeps_enabled
-            val bolusBeeps = sp.getBoolean(beepsConfigurationKey, false)
             aapsLogger.info(
                 LTag.PUMP,
                 "deliverTreatment: requestedBolusAmount=$requestedBolusAmount"

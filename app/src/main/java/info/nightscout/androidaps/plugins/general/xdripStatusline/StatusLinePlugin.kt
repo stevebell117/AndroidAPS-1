@@ -8,13 +8,14 @@ import info.nightscout.androidaps.R
 import info.nightscout.androidaps.events.*
 import info.nightscout.androidaps.extensions.toStringShort
 import info.nightscout.androidaps.interfaces.*
-import info.nightscout.shared.logging.AAPSLogger
+import info.nightscout.androidaps.logging.AAPSLogger
+import info.nightscout.androidaps.plugins.aps.loop.LoopPlugin
 import info.nightscout.androidaps.plugins.bus.RxBus
 import info.nightscout.androidaps.utils.DecimalFormatter
 import info.nightscout.androidaps.utils.FabricPrivacy
 import info.nightscout.androidaps.utils.resources.ResourceHelper
 import info.nightscout.androidaps.utils.rx.AapsSchedulers
-import info.nightscout.shared.sharedPreferences.SP
+import info.nightscout.androidaps.utils.sharedPreferences.SP
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.plusAssign
 import javax.inject.Inject
@@ -29,7 +30,7 @@ class StatusLinePlugin @Inject constructor(
     private val aapsSchedulers: AapsSchedulers,
     private val context: Context,
     private val fabricPrivacy: FabricPrivacy,
-    private val loop: Loop,
+    private val loopPlugin: LoopPlugin,
     private val iobCobCalculator: IobCobCalculator,
     private val rxBus: RxBus,
     aapsLogger: AAPSLogger
@@ -65,7 +66,7 @@ class StatusLinePlugin @Inject constructor(
         super.onStart()
         disposable += rxBus.toObservable(EventRefreshOverview::class.java)
             .observeOn(aapsSchedulers.io)
-            .subscribe({ if (lastLoopStatus != (loop as PluginBase).isEnabled()) sendStatus() }, fabricPrivacy::logException)
+            .subscribe({ if (lastLoopStatus != loopPlugin.isEnabled(PluginType.LOOP)) sendStatus() }, fabricPrivacy::logException)
         disposable += rxBus.toObservable(EventExtendedBolusChange::class.java)
             .observeOn(aapsSchedulers.io)
             .subscribe({ sendStatus() }, fabricPrivacy::logException)
@@ -112,11 +113,12 @@ class StatusLinePlugin @Inject constructor(
 
     private fun buildStatusString(profile: Profile): String {
         var status = ""
-        if (!(loop as PluginBase).isEnabled()) {
+        if (!loopPlugin.isEnabled(PluginType.LOOP)) {
             status += rh.gs(R.string.disabledloop) + "\n"
             lastLoopStatus = false
-        } else lastLoopStatus = true
-
+        } else if (loopPlugin.isEnabled(PluginType.LOOP)) {
+            lastLoopStatus = true
+        }
         //Temp basal
         val activeTemp = iobCobCalculator.getTempBasalIncludingConvertedExtended(System.currentTimeMillis())
         if (activeTemp != null) {

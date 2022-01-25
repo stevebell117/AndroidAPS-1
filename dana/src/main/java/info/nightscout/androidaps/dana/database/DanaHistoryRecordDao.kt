@@ -9,7 +9,7 @@ import io.reactivex.Single
 @Dao
 abstract class DanaHistoryRecordDao {
 
-    @Query("SELECT * from $TABLE_DANA_HISTORY WHERE timestamp >= :timestamp AND code = :type ORDER BY timestamp DESC")
+    @Query("SELECT * from $TABLE_DANA_HISTORY WHERE timestamp >= :timestamp AND code = :type")
     abstract fun allFromByType(timestamp: Long, type: Byte): Single<List<DanaHistoryRecord>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

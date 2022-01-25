@@ -1,8 +1,10 @@
 package info.nightscout.androidaps.interaction.utils;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -10,7 +12,6 @@ import org.junit.Test;
 import java.util.HashSet;
 import java.util.Set;
 
-@SuppressWarnings({"rawtypes", "SpellCheckingInspection"})
 public class PairTest {
 
     @Test
@@ -35,7 +36,7 @@ public class PairTest {
         assertNotEquals(no1, no3);
         assertEquals(no1, no4);
 
-        assertNotEquals("aa bbb", left.toString());
+        assertNotEquals("aa bbb", left);
     }
 
     @Test
@@ -56,9 +57,10 @@ public class PairTest {
         // GIVEN
         Pair pair = Pair.create("the-first", "2nd");
 
-        assertTrue(pair.toString().contains("the-first"));
-        assertTrue(pair.toString().contains("2nd"));
+        assertThat(pair.toString(), containsString("the-first"));
+        assertThat(pair+"", containsString("2nd"));
     }
+
 
 
 }

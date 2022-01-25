@@ -4,9 +4,9 @@ import android.os.SystemClock
 import dagger.android.HasAndroidInjector
 import info.nightscout.androidaps.Constants
 import info.nightscout.androidaps.R
-import info.nightscout.androidaps.interfaces.CommandQueue
-import info.nightscout.shared.logging.AAPSLogger
-import info.nightscout.shared.logging.LTag
+import info.nightscout.androidaps.interfaces.CommandQueueProvider
+import info.nightscout.androidaps.logging.AAPSLogger
+import info.nightscout.androidaps.logging.LTag
 import info.nightscout.androidaps.plugins.general.smsCommunicator.otp.OneTimePassword
 import info.nightscout.androidaps.plugins.general.smsCommunicator.otp.OneTimePasswordValidationResult
 import info.nightscout.androidaps.utils.DateUtil
@@ -26,7 +26,7 @@ class AuthRequest internal constructor(
     @Inject lateinit var rh: ResourceHelper
     @Inject lateinit var otp: OneTimePassword
     @Inject lateinit var dateUtil: DateUtil
-    @Inject lateinit var commandQueue: CommandQueue
+    @Inject lateinit var commandQueue: CommandQueueProvider
 
     private var date = 0L
     private var processed = false

@@ -53,7 +53,7 @@ interface PumpSync {
      *                  temporaryBasal (and extendedBolus) is null if there is no record in progress based on data in database
      *                  bolus is null when there is no record in database
      */
-    data class PumpState(val temporaryBasal: TemporaryBasal?, val extendedBolus: ExtendedBolus?, val bolus: Bolus?, val profile: Profile?, val serialNumber: String) {
+    data class PumpState(val temporaryBasal: TemporaryBasal?, val extendedBolus: ExtendedBolus?, val bolus: Bolus?, val profile: Profile?) {
 
         data class TemporaryBasal(val timestamp: Long, val duration: Long, val rate: Double, val isAbsolute: Boolean, val type: TemporaryBasalType, val id: Long, val pumpId: Long?)
         data class ExtendedBolus(val timestamp: Long, val duration: Long, val amount: Double, val rate: Double)

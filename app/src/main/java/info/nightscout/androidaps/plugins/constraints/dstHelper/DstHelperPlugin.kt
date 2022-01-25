@@ -3,15 +3,16 @@ package info.nightscout.androidaps.plugins.constraints.dstHelper
 import dagger.android.HasAndroidInjector
 import info.nightscout.androidaps.R
 import info.nightscout.androidaps.interfaces.*
-import info.nightscout.shared.logging.AAPSLogger
-import info.nightscout.shared.logging.LTag
+import info.nightscout.androidaps.logging.AAPSLogger
+import info.nightscout.androidaps.logging.LTag
+import info.nightscout.androidaps.plugins.aps.loop.LoopPlugin
 import info.nightscout.androidaps.plugins.bus.RxBus
 import info.nightscout.androidaps.plugins.general.overview.events.EventNewNotification
 import info.nightscout.androidaps.plugins.general.overview.notifications.Notification
 import info.nightscout.androidaps.plugins.general.overview.notifications.NotificationWithAction
 import info.nightscout.androidaps.utils.T
 import info.nightscout.androidaps.utils.resources.ResourceHelper
-import info.nightscout.shared.sharedPreferences.SP
+import info.nightscout.androidaps.utils.sharedPreferences.SP
 import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -24,7 +25,7 @@ class DstHelperPlugin @Inject constructor(
     rh: ResourceHelper,
     private val sp: SP,
     private val activePlugin: ActivePlugin,
-    private val loop: Loop
+    private val loopPlugin: LoopPlugin
 ) : PluginBase(PluginDescription()
     .mainType(PluginType.CONSTRAINTS)
     .neverVisible(true)
@@ -63,7 +64,7 @@ class DstHelperPlugin @Inject constructor(
             return value
         }
         if (wasDST(cal)) {
-            if (!loop.isSuspended) {
+            if (!loopPlugin.isSuspended) {
                 val snoozedTo: Long = sp.getLong(R.string.key_snooze_loopdisabled, 0L)
                 if (snoozedTo == 0L || System.currentTimeMillis() > snoozedTo) {
                     val notification = NotificationWithAction(injector, Notification.DST_LOOP_DISABLED, rh.gs(R.string.dst_loop_disabled_warning), Notification.LOW)

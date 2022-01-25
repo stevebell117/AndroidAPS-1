@@ -4,7 +4,7 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.os.Binder
 import android.os.IBinder
-import info.nightscout.shared.logging.LTag
+import info.nightscout.androidaps.logging.LTag
 import info.nightscout.androidaps.plugins.pump.common.defs.PumpDeviceState
 import info.nightscout.androidaps.plugins.pump.common.hw.rileylink.RileyLinkConst
 import info.nightscout.androidaps.plugins.pump.common.hw.rileylink.ble.RFSpy
@@ -28,7 +28,8 @@ import javax.inject.Singleton
  * RileyLinkMedtronicService is intended to stay running when the gui-app is closed.
  */
 @Singleton
-class RileyLinkMedtronicService : RileyLinkService() {
+class RileyLinkMedtronicService  // This empty constructor must be kept, otherwise dagger injection might break!
+@Inject constructor() : RileyLinkService() {
 
     @Inject lateinit var medtronicPumpPlugin: MedtronicPumpPlugin
     @Inject lateinit var medtronicUtil: MedtronicUtil
@@ -39,7 +40,7 @@ class RileyLinkMedtronicService : RileyLinkService() {
 
     private val mBinder: IBinder = LocalBinder()
     private var serialChanged = false
-    private lateinit var frequencies: Array<String>
+    lateinit var frequencies: Array<String>
     private var rileyLinkAddress: String? = null
     private var rileyLinkAddressChanged = false
     private var encodingType: RileyLinkEncodingType? = null
@@ -60,17 +61,16 @@ class RileyLinkMedtronicService : RileyLinkService() {
         return mBinder
     }
 
-    override val encoding: RileyLinkEncodingType
-        get() = RileyLinkEncodingType.FourByteSixByteLocal
+    override fun getEncoding(): RileyLinkEncodingType {
+        return RileyLinkEncodingType.FourByteSixByteLocal
+    }
 
     /**
      * If you have customized RileyLinkServiceData you need to override this
      */
     override fun initRileyLinkServiceData() {
-        frequencies = arrayOf(
-            rh.gs(R.string.key_medtronic_pump_frequency_us_ca),
-            rh.gs(R.string.key_medtronic_pump_frequency_worldwide)
-        )
+        frequencies = arrayOf(rh.gs(R.string.key_medtronic_pump_frequency_us_ca),
+            rh.gs(R.string.key_medtronic_pump_frequency_worldwide))
         // frequencies[0] = rh.gs(R.string.key_medtronic_pump_frequency_us_ca)
         // frequencies[1] = rh.gs(R.string.key_medtronic_pump_frequency_worldwide)
         rileyLinkServiceData.targetDevice = RileyLinkTargetDevice.MedtronicPump
@@ -83,14 +83,15 @@ class RileyLinkMedtronicService : RileyLinkService() {
         aapsLogger.debug(LTag.PUMPCOMM, "RileyLinkMedtronicService newly constructed")
     }
 
-    override val deviceCommunicationManager
-        get() = medtronicCommunicationManager
+    override fun getDeviceCommunicationManager(): MedtronicCommunicationManager {
+        return medtronicCommunicationManager
+    }
 
     override fun setPumpDeviceState(pumpDeviceState: PumpDeviceState) {
         medtronicPumpStatus.pumpDeviceState = pumpDeviceState
     }
 
-    private fun setPumpIDString(pumpID: String) {
+    fun setPumpIDString(pumpID: String) {
         if (pumpID.length != 6) {
             aapsLogger.error("setPumpIDString: invalid pump id string: $pumpID")
             return

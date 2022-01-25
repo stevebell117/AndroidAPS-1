@@ -1,7 +1,7 @@
 package info.nightscout.androidaps.interfaces
 
-import info.nightscout.shared.logging.AAPSLogger
-import info.nightscout.shared.logging.LTag
+import info.nightscout.androidaps.logging.AAPSLogger
+import info.nightscout.androidaps.logging.LTag
 import java.util.*
 
 class Constraint<T : Comparable<T>>(private var value: T) {
@@ -17,14 +17,14 @@ class Constraint<T : Comparable<T>>(private var value: T) {
         return originalValue
     }
 
-    fun set(aapsLogger: AAPSLogger, value: T): Constraint<T> {
+    operator fun set(aapsLogger: AAPSLogger, value: T): Constraint<T> {
         this.value = value
         originalValue = value
         aapsLogger.debug(LTag.CONSTRAINTS, "Setting value $value")
         return this
     }
 
-    fun set(aapsLogger: AAPSLogger, value: T, reason: String, from: Any): Constraint<T> {
+    operator fun set(aapsLogger: AAPSLogger, value: T, reason: String, from: Any): Constraint<T> {
         aapsLogger.debug(LTag.CONSTRAINTS, "Setting value " + this.value + " -> " + value + " (" + reason + ")[" + translateFrom(from) + "]")
         this.value = value
         addReason(reason, from)

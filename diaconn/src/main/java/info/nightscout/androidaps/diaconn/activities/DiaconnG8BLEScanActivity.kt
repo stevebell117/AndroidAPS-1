@@ -3,13 +3,11 @@ package info.nightscout.androidaps.diaconn.activities
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothManager
 import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
-import android.content.Context
 import android.content.pm.ActivityInfo
 import android.os.Bundle
 import android.os.Handler
@@ -25,7 +23,7 @@ import info.nightscout.androidaps.diaconn.R
 import info.nightscout.androidaps.diaconn.databinding.DiaconnG8BlescannerActivityBinding
 import info.nightscout.androidaps.plugins.bus.RxBus
 import info.nightscout.androidaps.plugins.pump.common.ble.BlePreCheck
-import info.nightscout.shared.sharedPreferences.SP
+import info.nightscout.androidaps.utils.sharedPreferences.SP
 import java.util.*
 import javax.inject.Inject
 
@@ -34,9 +32,7 @@ class DiaconnG8BLEScanActivity : NoSplashAppCompatActivity() {
     @Inject lateinit var sp: SP
     @Inject lateinit var rxBus: RxBus
     @Inject lateinit var blePreCheck: BlePreCheck
-    @Inject lateinit var context: Context
 
-    private val bluetoothAdapter: BluetoothAdapter? get() = (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager?)?.adapter
     private var listAdapter: ListAdapter? = null
     private val devices = ArrayList<BluetoothDeviceItem>()
     private var bluetoothLeScanner: BluetoothLeScanner? = null
@@ -62,7 +58,7 @@ class DiaconnG8BLEScanActivity : NoSplashAppCompatActivity() {
     override fun onResume() {
         super.onResume()
 
-       bluetoothAdapter?.let { bluetoothAdapter ->
+        BluetoothAdapter.getDefaultAdapter()?.let { bluetoothAdapter ->
             if (!bluetoothAdapter.isEnabled) bluetoothAdapter.enable()
             bluetoothLeScanner = bluetoothAdapter.bluetoothLeScanner
             startScan()

@@ -149,8 +149,6 @@ class ProfileViewerDialog : DaggerDialogFragment() {
                     binding.basal.text = basals(profile1, profile2)
                     binding.target.text = targets(profile1, profile2)
                     binding.basalGraph.show(profile1, profile2)
-                    binding.isfGraph.show(profile1, profile2)
-                    binding.icGraph.show(profile1, profile2)
                 }
 
                 binding.noprofile.visibility = View.GONE
@@ -169,8 +167,6 @@ class ProfileViewerDialog : DaggerDialogFragment() {
                 binding.basal.text = it.getBasalList(rh, dateUtil)
                 binding.target.text = it.getTargetList(rh, dateUtil)
                 binding.basalGraph.show(it)
-                binding.isfGraph.show(it)
-                binding.icGraph.show(it)
 
                 binding.noprofile.visibility = View.GONE
                 val validity = it.isValid("ProfileViewDialog", activePlugin.activePump, config, rh, rxBus, hardLimits, false)

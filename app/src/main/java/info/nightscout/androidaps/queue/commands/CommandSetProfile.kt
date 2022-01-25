@@ -5,10 +5,11 @@ import info.nightscout.androidaps.R
 import info.nightscout.androidaps.data.PumpEnactResult
 import info.nightscout.androidaps.database.ValueWrapper
 import info.nightscout.androidaps.interfaces.ActivePlugin
-import info.nightscout.androidaps.interfaces.CommandQueue
+import info.nightscout.androidaps.interfaces.CommandQueueProvider
 import info.nightscout.androidaps.interfaces.Config
+import info.nightscout.androidaps.interfaces.PluginType
 import info.nightscout.androidaps.interfaces.Profile
-import info.nightscout.shared.logging.LTag
+import info.nightscout.androidaps.logging.LTag
 import info.nightscout.androidaps.plugins.general.smsCommunicator.SmsCommunicatorPlugin
 import info.nightscout.androidaps.queue.Callback
 import info.nightscout.androidaps.utils.DateUtil
@@ -24,7 +25,7 @@ class CommandSetProfile constructor(
     @Inject lateinit var smsCommunicatorPlugin: SmsCommunicatorPlugin
     @Inject lateinit var activePlugin: ActivePlugin
     @Inject lateinit var dateUtil: DateUtil
-    @Inject lateinit var commandQueue: CommandQueue
+    @Inject lateinit var commandQueue: CommandQueueProvider
     @Inject lateinit var config: Config
 
     override fun execute() {
@@ -39,12 +40,10 @@ class CommandSetProfile constructor(
         // Send SMS notification if ProfileSwitch is coming from NS
         val profileSwitch = repository.getEffectiveProfileSwitchActiveAt(dateUtil.now()).blockingGet()
         if (profileSwitch is ValueWrapper.Existing && r.enacted && hasNsId && !config.NSCLIENT) {
-            if (smsCommunicatorPlugin.isEnabled())
+            if (smsCommunicatorPlugin.isEnabled(PluginType.GENERAL))
                 smsCommunicatorPlugin.sendNotificationToAllNumbers(rh.gs(R.string.profile_set_ok))
         }
     }
 
-    override fun status(): String = rh.gs(R.string.set_profile)
-
-    override fun log(): String = "SET PROFILE"
+    override fun status(): String = "SET PROFILE"
 }

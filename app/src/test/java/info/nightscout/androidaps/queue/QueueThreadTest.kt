@@ -15,9 +15,9 @@ import info.nightscout.androidaps.plugins.configBuilder.ConstraintChecker
 import info.nightscout.androidaps.plugins.general.maintenance.PrefFileListProvider
 import info.nightscout.androidaps.queue.commands.Command
 import info.nightscout.androidaps.queue.commands.CommandTempBasalAbsolute
-import info.nightscout.androidaps.utils.AndroidPermission
 import info.nightscout.androidaps.utils.buildHelper.BuildHelperImpl
-import info.nightscout.shared.sharedPreferences.SP
+import info.nightscout.androidaps.utils.buildHelper.ConfigImpl
+import info.nightscout.androidaps.utils.sharedPreferences.SP
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
@@ -32,7 +32,6 @@ class QueueThreadTest : TestBaseWithProfile() {
     @Mock lateinit var fileListProvider: PrefFileListProvider
     @Mock lateinit var powerManager: PowerManager
     @Mock lateinit var repository: AppRepository
-    @Mock lateinit var androidPermission: AndroidPermission
 
     val injector = HasAndroidInjector {
         AndroidInjector {
@@ -56,7 +55,7 @@ class QueueThreadTest : TestBaseWithProfile() {
         commandQueue = CommandQueue(
             injector, aapsLogger, rxBus, aapsSchedulers, rh, constraintChecker,
             profileFunction, activePlugin, context, sp,
-            BuildHelperImpl(config, fileListProvider), dateUtil, repository, fabricPrivacy, config, androidPermission
+            BuildHelperImpl(ConfigImpl(), fileListProvider), dateUtil, repository, fabricPrivacy, config
         )
 
         val pumpDescription = PumpDescription()
@@ -77,7 +76,7 @@ class QueueThreadTest : TestBaseWithProfile() {
         Mockito.`when`(constraintChecker.applyBasalPercentConstraints(anyObject(), anyObject()))
             .thenReturn(percentageConstraint)
 
-        sut = QueueThread(commandQueue, context, aapsLogger, rxBus, activePlugin, rh, sp, androidPermission, config)
+        sut = QueueThread(commandQueue, context, aapsLogger, rxBus, activePlugin, rh, sp)
     }
 
     @Test

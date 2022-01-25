@@ -16,11 +16,12 @@
 
         <info.nightscout.androidaps.utils.textValidator.ValidatingEditTextPreference
             android:dialogMessage="@string/summary_email_for_crash_report"
-            android:inputType="text"
+            android:inputType="textEmailAddress"
             android:key="@string/key_email_for_crash_report"
             android:selectAllOnFocus="true"
             android:summary="@string/summary_email_for_crash_report"
-            android:title="@string/identification" />
+            android:title="@string/email_address"
+            validate:testType="email" />
 
     </PreferenceCategory>
 
