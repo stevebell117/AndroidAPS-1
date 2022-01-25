@@ -5,7 +5,7 @@ import info.nightscout.androidaps.dana.DanaPump
 import info.nightscout.androidaps.danar.R
 import info.nightscout.androidaps.danar.comm.MessageBase
 import info.nightscout.androidaps.events.EventPumpStatusChanged
-import info.nightscout.androidaps.logging.LTag
+import info.nightscout.shared.logging.LTag
 import info.nightscout.androidaps.plugins.pump.common.defs.PumpType
 import info.nightscout.androidaps.utils.T
 import java.util.*
@@ -151,6 +151,10 @@ class MsgHistoryEventsV2 constructor(
                     (if (newRecord) "**NEW** " else "") + "EVENT BOLUS (" + recordCode + ") "
                         + dateUtil.dateAndTimeString(datetime) + " (" + datetime + ")" + " Bolus: " + param1 / 100.0 + "U Duration: " + param2 + "min"
                 )
+                if (!newRecord && detailedBolusInfo != null) {
+                    // detailedInfo can be from another similar record. Reinsert
+                    detailedBolusInfoStorage.add(detailedBolusInfo)
+                }
                 status = "BOLUS " + dateUtil.timeString(datetime)
             }
 
@@ -169,6 +173,10 @@ class MsgHistoryEventsV2 constructor(
                     (if (newRecord) "**NEW** " else "") + "EVENT DUAL_BOLUS (" + recordCode + ") "
                         + dateUtil.dateAndTimeString(datetime) + " (" + datetime + ")" + " Bolus: " + param1 / 100.0 + "U Duration: " + param2 + "min"
                 )
+                if (!newRecord && detailedBolusInfo != null) {
+                    // detailedInfo can be from another similar record. Reinsert
+                    detailedBolusInfoStorage.add(detailedBolusInfo)
+                }
                 status = "DUAL_BOLUS " + dateUtil.timeString(datetime)
             }
 

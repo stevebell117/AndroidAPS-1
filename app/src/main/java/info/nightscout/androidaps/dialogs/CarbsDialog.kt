@@ -20,11 +20,8 @@ import info.nightscout.androidaps.database.entities.ValueWithUnit
 import info.nightscout.androidaps.database.transactions.InsertAndCancelCurrentTemporaryTargetTransaction
 import info.nightscout.androidaps.databinding.DialogCarbsBinding
 import info.nightscout.androidaps.extensions.formatColor
-import info.nightscout.androidaps.interfaces.Constraint
-import info.nightscout.androidaps.interfaces.GlucoseUnit
-import info.nightscout.androidaps.interfaces.IobCobCalculator
-import info.nightscout.androidaps.interfaces.ProfileFunction
-import info.nightscout.androidaps.logging.LTag
+import info.nightscout.androidaps.interfaces.*
+import info.nightscout.shared.logging.LTag
 import info.nightscout.androidaps.logging.UserEntryLogger
 import info.nightscout.androidaps.plugins.configBuilder.ConstraintChecker
 import info.nightscout.androidaps.plugins.iob.iobCobCalculator.GlucoseStatusProvider
@@ -312,7 +309,7 @@ class CarbsDialog : DialogFragmentWithDate() {
                         })
                     }
                     if (useAlarm && carbs > 0 && timeOffset > 0) {
-                        carbTimer.scheduleReminder(dateUtil.now() + T.mins(timeOffset.toLong()).msecs())
+                        carbTimer.scheduleReminder(T.mins(timeOffset.toLong()).secs().toInt())
                     }
                 }, null)
             }

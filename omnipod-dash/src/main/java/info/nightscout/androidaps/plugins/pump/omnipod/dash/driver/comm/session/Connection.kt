@@ -7,8 +7,8 @@ import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.os.SystemClock
 import info.nightscout.androidaps.extensions.toHex
-import info.nightscout.androidaps.logging.AAPSLogger
-import info.nightscout.androidaps.logging.LTag
+import info.nightscout.shared.logging.AAPSLogger
+import info.nightscout.shared.logging.LTag
 import info.nightscout.androidaps.plugins.pump.omnipod.dash.BuildConfig
 import info.nightscout.androidaps.plugins.pump.omnipod.dash.driver.comm.Ids
 import info.nightscout.androidaps.plugins.pump.omnipod.dash.driver.comm.ServiceDiscoverer
@@ -53,8 +53,7 @@ class Connection(
     private val bleCommCallbacks = BleCommCallbacks(aapsLogger, incomingPackets, this)
     private var gattConnection: BluetoothGatt? = null
 
-    private val bluetoothManager: BluetoothManager =
-        context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+    private val bluetoothManager: BluetoothManager? = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager?
 
     @Volatile
     var session: Session? = null
@@ -67,9 +66,12 @@ class Connection(
         podState.connectionAttempts++
         podState.bluetoothConnectionState = OmnipodDashPodStateManager.BluetoothConnectionState.CONNECTING
         val autoConnect = false
-        val gatt = gattConnection
-            ?: podDevice.connectGatt(context, autoConnect, bleCommCallbacks, BluetoothDevice.TRANSPORT_LE)
+        val gatt = gattConnection ?: podDevice.connectGatt(context, autoConnect, bleCommCallbacks, BluetoothDevice.TRANSPORT_LE)
         gattConnection = gatt
+        if (gatt == null) {
+            Thread.sleep(SLEEP_WHEN_FAILING_TO_CONNECT_GATT) // Do not retry too often
+            throw FailedToConnectException("connectGatt() returned null")
+        }
         if (!gatt.connect()) {
             throw FailedToConnectException("connect() returned false")
         }
@@ -150,7 +152,7 @@ class Connection(
     }
 
     fun connectionState(): ConnectionState {
-        val connectionState = bluetoothManager.getConnectionState(podDevice, BluetoothProfile.GATT)
+        val connectionState = bluetoothManager?.getConnectionState(podDevice, BluetoothProfile.GATT)
         aapsLogger.debug(LTag.PUMPBTCOMM, "GATT connection state: $connectionState")
         if (connectionState != BluetoothProfile.STATE_CONNECTED) {
             return NotConnected
@@ -197,5 +199,6 @@ class Connection(
         const val BASE_CONNECT_TIMEOUT_MS = 10000L
         const val MIN_DISCOVERY_TIMEOUT_MS = 10000L
         const val STOP_CONNECTING_CHECK_INTERVAL_MS = 500L
+        const val SLEEP_WHEN_FAILING_TO_CONNECT_GATT = 10000L
     }
 }

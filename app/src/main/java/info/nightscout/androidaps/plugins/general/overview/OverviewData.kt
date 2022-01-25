@@ -10,12 +10,14 @@ import info.nightscout.androidaps.R
 import info.nightscout.androidaps.data.IobTotal
 import info.nightscout.androidaps.database.AppRepository
 import info.nightscout.androidaps.database.ValueWrapper
-import info.nightscout.androidaps.database.entities.*
+import info.nightscout.androidaps.database.entities.Bolus
+import info.nightscout.androidaps.database.entities.GlucoseValue
+import info.nightscout.androidaps.database.entities.TemporaryTarget
+import info.nightscout.androidaps.database.entities.TherapyEvent
 import info.nightscout.androidaps.extensions.*
 import info.nightscout.androidaps.interfaces.*
-import info.nightscout.androidaps.logging.AAPSLogger
-import info.nightscout.androidaps.logging.LTag
-import info.nightscout.androidaps.plugins.aps.loop.LoopPlugin
+import info.nightscout.shared.logging.AAPSLogger
+import info.nightscout.shared.logging.LTag
 import info.nightscout.androidaps.plugins.aps.openAPSSMB.SMBDefaults
 import info.nightscout.androidaps.plugins.general.nsclient.data.NSDeviceStatus
 import info.nightscout.androidaps.plugins.general.overview.graphExtensions.*
@@ -24,7 +26,7 @@ import info.nightscout.androidaps.plugins.iob.iobCobCalculator.CobInfo
 import info.nightscout.androidaps.plugins.iob.iobCobCalculator.data.AutosensData
 import info.nightscout.androidaps.utils.*
 import info.nightscout.androidaps.utils.resources.ResourceHelper
-import info.nightscout.androidaps.utils.sharedPreferences.SP
+import info.nightscout.shared.sharedPreferences.SP
 import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -45,7 +47,7 @@ class OverviewData @Inject constructor(
     private val defaultValueHelper: DefaultValueHelper,
     private val profileFunction: ProfileFunction,
     private val config: Config,
-    private val loopPlugin: LoopPlugin,
+    private val loop: Loop,
     private val nsDeviceStatus: NSDeviceStatus,
     private val repository: AppRepository,
     private val overviewMenus: OverviewMenus,
@@ -338,8 +340,8 @@ class OverviewData @Inject constructor(
     @Synchronized
     fun preparePredictions(from: String) {
 //        val start = dateUtil.now()
-        val apsResult = if (config.APS) loopPlugin.lastRun?.constraintsProcessed else nsDeviceStatus.getAPSResult(injector)
-        val predictionsAvailable = if (config.APS) loopPlugin.lastRun?.request?.hasPredictions == true else config.NSCLIENT
+        val apsResult = if (config.APS) loop.lastRun?.constraintsProcessed else nsDeviceStatus.getAPSResult(injector)
+        val predictionsAvailable = if (config.APS) loop.lastRun?.request?.hasPredictions == true else config.NSCLIENT
         val menuChartSettings = overviewMenus.setting
         // align to hours
         val calendar = Calendar.getInstance().also {
@@ -501,7 +503,7 @@ class OverviewData @Inject constructor(
         var toTime = toTime
         val targetsSeriesArray: MutableList<DataPoint> = java.util.ArrayList()
         var lastTarget = -1.0
-        loopPlugin.lastRun?.constraintsProcessed?.let { toTime = max(it.latestPredictionsTime, toTime) }
+        loop.lastRun?.constraintsProcessed?.let { toTime = max(it.latestPredictionsTime, toTime) }
         var time = fromTime
         while (time < toTime) {
             val tt = repository.getTemporaryTargetActiveAt(time).blockingGet()
