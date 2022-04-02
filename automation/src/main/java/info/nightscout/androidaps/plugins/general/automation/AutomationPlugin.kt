@@ -150,8 +150,10 @@ class AutomationPlugin @Inject constructor(
 
     private fun storeToSP() {
         val array = JSONArray()
+        val iterator = automationEvents.iterator()
         try {
-            for (event in automationEvents) {
+            while (iterator.hasNext()) {
+                val event = iterator.next()
                 array.put(JSONObject(event.toJSON()))
             }
         } catch (e: JSONException) {
@@ -169,14 +171,14 @@ class AutomationPlugin @Inject constructor(
                 val array = JSONArray(data)
                 for (i in 0 until array.length()) {
                     val o = array.getJSONObject(i)
-                    val event = AutomationEvent(injector).fromJSON(o.toString())
+                    val event = AutomationEvent(injector).fromJSON(o.toString(), i)
                     automationEvents.add(event)
                 }
             } catch (e: JSONException) {
                 e.printStackTrace()
             }
         else
-            automationEvents.add(AutomationEvent(injector).fromJSON(event))
+            automationEvents.add(AutomationEvent(injector).fromJSON(event, 0))
     }
 
     @Synchronized
@@ -292,8 +294,10 @@ class AutomationPlugin @Inject constructor(
 
     @Synchronized
     fun removeAt(index: Int) {
-        automationEvents.removeAt(index)
-        rxBus.send(EventAutomationDataChanged())
+        if (index >= 0 && index < automationEvents.size) {
+            automationEvents.removeAt(index)
+            rxBus.send(EventAutomationDataChanged())
+        }
     }
 
     @Synchronized
@@ -305,7 +309,6 @@ class AutomationPlugin @Inject constructor(
     @Synchronized
     fun swap(fromPosition: Int, toPosition: Int) {
         Collections.swap(automationEvents, fromPosition, toPosition)
-        rxBus.send(EventAutomationDataChanged())
     }
 
     @Synchronized

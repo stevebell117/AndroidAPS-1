@@ -1,5 +1,6 @@
 package info.nightscout.androidaps.plugins.general.overview
 
+import android.content.Context
 import android.graphics.DashPathEffect
 import android.graphics.Paint
 import com.jjoe64.graphview.series.BarGraphSeries
@@ -62,7 +63,7 @@ class OverviewData @Inject constructor(
 
     fun reset() {
         pumpStatus = ""
-        calcProgress = ""
+        calcProgressPct = 100
         lastBg = null
         bolusIob = null
         basalIob = null
@@ -120,7 +121,7 @@ class OverviewData @Inject constructor(
      * CALC PROGRESS
      */
 
-    var calcProgress: String = ""
+    var calcProgressPct: Int = 100
 
     /*
      * BG
@@ -128,22 +129,23 @@ class OverviewData @Inject constructor(
 
     var lastBg: GlucoseValue? = null
 
-    val isLow: Boolean
+    private val isLow: Boolean
         get() = lastBg?.let { lastBg ->
             lastBg.valueToUnits(profileFunction.getUnits()) < defaultValueHelper.determineLowLine()
         } ?: false
 
-    val isHigh: Boolean
+    private val isHigh: Boolean
         get() = lastBg?.let { lastBg ->
             lastBg.valueToUnits(profileFunction.getUnits()) > defaultValueHelper.determineHighLine()
         } ?: false
 
-    val lastBgColor: Int
-        get() = when {
-            isLow  -> rh.gc(R.color.low)
-            isHigh -> rh.gc(R.color.high)
-            else   -> rh.gc(R.color.inrange)
+    fun lastBgColor(context: Context?): Int {
+        return when {
+            isLow  -> rh.gac(context, R.attr.bgLow)
+            isHigh -> rh.gac(context, R.attr.highColor)
+            else   -> rh.gac(context, R.attr.bgInRange)
         }
+    }
 
     val lastBgDescription: String
         get() = when {
