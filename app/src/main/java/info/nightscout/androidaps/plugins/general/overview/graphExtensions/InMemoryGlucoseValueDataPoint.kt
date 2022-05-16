@@ -1,11 +1,12 @@
 package info.nightscout.androidaps.plugins.general.overview.graphExtensions
 
+import android.content.Context
 import info.nightscout.androidaps.Constants
 import info.nightscout.androidaps.core.R
 import info.nightscout.androidaps.data.InMemoryGlucoseValue
 import info.nightscout.androidaps.interfaces.GlucoseUnit
 import info.nightscout.androidaps.interfaces.ProfileFunction
-import info.nightscout.androidaps.utils.resources.ResourceHelper
+import info.nightscout.androidaps.interfaces.ResourceHelper
 import javax.inject.Inject
 
 class InMemoryGlucoseValueDataPoint @Inject constructor(
@@ -24,5 +25,7 @@ class InMemoryGlucoseValueDataPoint @Inject constructor(
     override val duration = 0L
     override val shape = PointsWithLabelGraphSeries.Shape.BUCKETED_BG
     override val size = 0.3f
-    override val color get() = rh.gc(R.color.white)
+    override fun color(context: Context?): Int {
+        return rh.gac(context, R.attr.inMemoryColor)
+    }
 }
