@@ -6,34 +6,35 @@ import androidx.work.Worker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import dagger.android.HasAndroidInjector
-import info.nightscout.androidaps.Constants
 import info.nightscout.androidaps.R
-import info.nightscout.androidaps.database.AppRepository
-import info.nightscout.androidaps.events.Event
-import info.nightscout.androidaps.events.EventAutosensCalculationFinished
-import info.nightscout.androidaps.interfaces.ActivePlugin
-import info.nightscout.androidaps.interfaces.IobCobCalculator
-import info.nightscout.androidaps.interfaces.ProfileFunction
-import info.nightscout.androidaps.plugins.aps.openAPSSMB.SMBDefaults
-import info.nightscout.androidaps.plugins.bus.RxBus
 import info.nightscout.androidaps.plugins.general.overview.events.EventNewNotification
-import info.nightscout.androidaps.plugins.general.overview.notifications.Notification
-import info.nightscout.androidaps.plugins.iob.iobCobCalculator.data.AutosensData
+import info.nightscout.androidaps.plugins.iob.iobCobCalculator.data.AutosensDataObject
 import info.nightscout.androidaps.plugins.iob.iobCobCalculator.events.EventIobCalculationProgress
 import info.nightscout.androidaps.plugins.sensitivity.SensitivityAAPSPlugin
 import info.nightscout.androidaps.plugins.sensitivity.SensitivityWeightedAveragePlugin
-import info.nightscout.androidaps.receivers.DataWorker
-import info.nightscout.androidaps.utils.DateUtil
+import info.nightscout.androidaps.receivers.DataWorkerStorage
 import info.nightscout.androidaps.utils.DecimalFormatter
-import info.nightscout.androidaps.utils.FabricPrivacy
 import info.nightscout.androidaps.utils.Profiler
-import info.nightscout.androidaps.utils.T
-import info.nightscout.androidaps.utils.buildHelper.BuildHelper
-import info.nightscout.androidaps.interfaces.ResourceHelper
 import info.nightscout.androidaps.workflow.CalculationWorkflow
-import info.nightscout.shared.logging.AAPSLogger
-import info.nightscout.shared.logging.LTag
+import info.nightscout.core.fabric.FabricPrivacy
+import info.nightscout.database.impl.AppRepository
+import info.nightscout.interfaces.BuildHelper
+import info.nightscout.interfaces.Constants
+import info.nightscout.interfaces.aps.AutosensData
+import info.nightscout.interfaces.aps.SMBDefaults
+import info.nightscout.interfaces.iob.IobCobCalculator
+import info.nightscout.interfaces.notifications.Notification
+import info.nightscout.interfaces.plugin.ActivePlugin
+import info.nightscout.interfaces.profile.ProfileFunction
+import info.nightscout.rx.bus.RxBus
+import info.nightscout.rx.events.Event
+import info.nightscout.rx.events.EventAutosensCalculationFinished
+import info.nightscout.rx.logging.AAPSLogger
+import info.nightscout.rx.logging.LTag
+import info.nightscout.shared.interfaces.ResourceHelper
 import info.nightscout.shared.sharedPreferences.SP
+import info.nightscout.shared.utils.DateUtil
+import info.nightscout.shared.utils.T
 import javax.inject.Inject
 import kotlin.math.abs
 import kotlin.math.max
@@ -59,7 +60,7 @@ class IobCobOrefWorker @Inject internal constructor(
     @Inject lateinit var fabricPrivacy: FabricPrivacy
     @Inject lateinit var dateUtil: DateUtil
     @Inject lateinit var repository: AppRepository
-    @Inject lateinit var dataWorker: DataWorker
+    @Inject lateinit var dataWorkerStorage: DataWorkerStorage
 
     init {
         (context.applicationContext as HasAndroidInjector).androidInjector().inject(this)
@@ -75,15 +76,15 @@ class IobCobOrefWorker @Inject internal constructor(
     )
 
     override fun doWork(): Result {
-        val data = dataWorker.pickupObject(inputData.getLong(DataWorker.STORE_KEY, -1)) as IobCobOrefWorkerData?
-            ?: return Result.failure(workDataOf("Error" to "missing input data"))
+        val data = dataWorkerStorage.pickupObject(inputData.getLong(DataWorkerStorage.STORE_KEY, -1)) as IobCobOrefWorkerData?
+            ?: return Result.success(workDataOf("Error" to "missing input data"))
 
         val start = dateUtil.now()
         try {
             aapsLogger.debug(LTag.AUTOSENS, "AUTOSENSDATA thread started: ${data.from}")
             if (!profileFunction.isProfileValid("IobCobThread")) {
                 aapsLogger.debug(LTag.AUTOSENS, "Aborting calculation thread (No profile): ${data.from}")
-                return Result.failure(workDataOf("Error" to "app still initializing"))
+                return Result.success(workDataOf("Error" to "app still initializing"))
             }
             //log.debug("Locking calculateSensitivityData");
             val oldestTimeWithData = data.iobCobCalculatorPlugin.calculateDetectionStart(data.end, data.limitDataToOldestAvailable)
@@ -93,7 +94,7 @@ class IobCobOrefWorker @Inject internal constructor(
             val autosensDataTable = ads.autosensDataTable
             if (bucketedData == null || bucketedData.size < 3) {
                 aapsLogger.debug(LTag.AUTOSENS, "Aborting calculation thread (No bucketed data available): ${data.from}")
-                return Result.failure(workDataOf("Error" to "Aborting calculation thread (No bucketed data available): ${data.from}"))
+                return Result.success(workDataOf("Error" to "Aborting calculation thread (No bucketed data available): ${data.from}"))
             }
             val prevDataTime = ads.roundUpTime(bucketedData[bucketedData.size - 3].timestamp)
             aapsLogger.debug(LTag.AUTOSENS, "Prev data time: " + dateUtil.dateAndTimeString(prevDataTime))
@@ -121,7 +122,7 @@ class IobCobOrefWorker @Inject internal constructor(
                 }
                 aapsLogger.debug(LTag.AUTOSENS, "Processing calculation thread: ${data.from} ($i/${bucketedData.size})")
                 val sens = profile.getIsfMgdl(bgTime)
-                val autosensData = AutosensData(data.injector)
+                val autosensData = AutosensDataObject(data.injector)
                 autosensData.time = bgTime
                 if (previous != null) autosensData.activeCarbsList = previous.cloneCarbsList() else autosensData.activeCarbsList = ArrayList()
 
@@ -197,7 +198,7 @@ class IobCobOrefWorker @Inject internal constructor(
                 for (recentCarbTreatment in recentCarbTreatments) {
                     autosensData.carbsFromBolus += recentCarbTreatment.amount
                     val isAAPSOrWeighted = sensitivityAAPSPlugin.isEnabled() || sensitivityWeightedAveragePlugin.isEnabled()
-                    autosensData.activeCarbsList.add(autosensData.CarbsInPast(recentCarbTreatment, isAAPSOrWeighted))
+                    autosensData.activeCarbsList.add(fromCarbs(recentCarbTreatment, isAAPSOrWeighted, profileFunction, aapsLogger, dateUtil, sp))
                     autosensData.pastSensitivity += "[" + DecimalFormatter.to0Decimal(recentCarbTreatment.amount) + "g]"
                 }
 

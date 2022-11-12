@@ -103,7 +103,7 @@
     <string name="action_preset_1">Predvoľba 1</string>
     <string name="action_preset_2">Predvoľba 2</string>
     <string name="action_preset_3">Predvoľba 3</string>
-    <string name="action_free_amount" comment="In prime/fill menu, allows to enter any amount to be used for priming/filling">Ľubovoľné množstvo</string>
+    <string name="action_free_amount" comment="In prime/fill menu, allows one to enter any amount to be used for priming/filling">Ľubovoľné množstvo</string>
     <string name="action_confirm">POTVRDIŤ</string>
     <string name="action_timeshift">časový posun</string>
     <string name="action_bolus">Bolus</string>
@@ -114,7 +114,7 @@
     <string name="status_loop">Uzavretý okruh</string>
     <string name="status_profile_switch">Prepnutie profilu</string>
     <string name="status_tdd">TDD</string>
-    <string name="activity_carb">Sacharidy</string>
+    <string name="activity_carb">Sach</string>
     <string name="activity_IOB">IOB</string>
     <string name="activity_no_status">žiadny stav</string>
     <string name="color_name_red">červená</string>
@@ -168,4 +168,22 @@
     <string name="tile_no_config">Nie je dostupná žiadna konfigurácia</string>
     <string name="wear_control_not_enabled">Ovládanie hodinkami vypnuté</string>
     <string name="wear_control_no_data">Žiadne údaje nie sú k dispozícii</string>
+    <string name="increment">prírastok</string>
+    <string name="decrement">zníženie</string>
+    <string name="first_char_high">H</string>
+    <string name="first_char_low">L</string>
+    <string name="abbreviation_average">priemer</string>
+    <string name="no_iob_u">--JI</string>
+    <string name="no_cob_g">--g</string>
+    <string name="no_tmp_basal_u_h">-.--JI/h</string>
+    <string name="uploader_na">Uploader: ---%</string>
+    <string name="no_status">S: žiadny stav</string>
+    <string name="time_stamp_na_min_ago">Pred -- minútami</string>
+    <string name="delta_na">--- mg/dl</string>
+    <string name="no_loop_status">Žiadny stav uzavretého okruhu</string>
+    <string name="cob_000g">000g</string>
+    <string name="svg_00_0" comment="use , or . only">00,0</string>
+    <string name="iob_0_00u">0,00JI</string>
+    <string name="snooze_alert">AAPS Potvrdenie výstrahy</string>
+    <string name="sending_snooze">Odosielanie potvrdení do AAPS</string>
 </resources>

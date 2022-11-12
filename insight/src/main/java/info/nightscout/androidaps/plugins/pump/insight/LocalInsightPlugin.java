@@ -30,38 +30,15 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import dagger.android.HasAndroidInjector;
-import info.nightscout.androidaps.data.DetailedBolusInfo;
-import info.nightscout.androidaps.interfaces.Profile;
-import info.nightscout.androidaps.data.PumpEnactResult;
-import info.nightscout.androidaps.events.EventInitializationChanged;
-import info.nightscout.androidaps.events.EventRefreshOverview;
+import info.nightscout.androidaps.data.PumpEnactResultObject;
+import info.nightscout.androidaps.insight.R;
 import info.nightscout.androidaps.insight.database.InsightBolusID;
 import info.nightscout.androidaps.insight.database.InsightDbHelper;
 import info.nightscout.androidaps.insight.database.InsightHistoryOffset;
 import info.nightscout.androidaps.insight.database.InsightPumpID;
 import info.nightscout.androidaps.insight.database.InsightPumpID.EventType;
-import info.nightscout.androidaps.insight.R;
-import info.nightscout.androidaps.interfaces.CommandQueue;
-import info.nightscout.androidaps.interfaces.Config;
-import info.nightscout.androidaps.interfaces.Constraint;
-import info.nightscout.androidaps.interfaces.Constraints;
-import info.nightscout.androidaps.interfaces.PluginDescription;
-import info.nightscout.androidaps.interfaces.PluginType;
-import info.nightscout.androidaps.interfaces.ProfileFunction;
-import info.nightscout.androidaps.interfaces.Pump;
-import info.nightscout.androidaps.interfaces.PumpDescription;
-import info.nightscout.androidaps.interfaces.PumpPluginBase;
-import info.nightscout.androidaps.interfaces.PumpSync;
-import info.nightscout.androidaps.interfaces.PumpSync.PumpState.TemporaryBasal;
-import info.nightscout.shared.logging.AAPSLogger;
-import info.nightscout.shared.logging.LTag;
-import info.nightscout.androidaps.plugins.bus.RxBus;
-import info.nightscout.androidaps.plugins.common.ManufacturerType;
 import info.nightscout.androidaps.plugins.general.overview.events.EventDismissNotification;
 import info.nightscout.androidaps.plugins.general.overview.events.EventNewNotification;
-import info.nightscout.androidaps.plugins.general.overview.events.EventOverviewBolusProgress;
-import info.nightscout.androidaps.plugins.general.overview.notifications.Notification;
-import info.nightscout.androidaps.plugins.pump.common.defs.PumpType;
 import info.nightscout.androidaps.plugins.pump.insight.app_layer.Service;
 import info.nightscout.androidaps.plugins.pump.insight.app_layer.history.HistoryReadingDirection;
 import info.nightscout.androidaps.plugins.pump.insight.app_layer.history.ReadHistoryEventsMessage;
@@ -128,13 +105,39 @@ import info.nightscout.androidaps.plugins.pump.insight.exceptions.app_layer_erro
 import info.nightscout.androidaps.plugins.pump.insight.exceptions.app_layer_errors.NoActiveTBRToCanceLException;
 import info.nightscout.androidaps.plugins.pump.insight.utils.ExceptionTranslator;
 import info.nightscout.androidaps.plugins.pump.insight.utils.ParameterBlockUtil;
-import info.nightscout.androidaps.utils.DateUtil;
-import info.nightscout.androidaps.utils.T;
-import info.nightscout.androidaps.interfaces.ResourceHelper;
+import info.nightscout.interfaces.Config;
+import info.nightscout.interfaces.constraints.Constraint;
+import info.nightscout.interfaces.constraints.Constraints;
+import info.nightscout.interfaces.notifications.Notification;
+import info.nightscout.interfaces.plugin.PluginDescription;
+import info.nightscout.interfaces.plugin.PluginType;
+import info.nightscout.interfaces.profile.Profile;
+import info.nightscout.interfaces.profile.ProfileFunction;
+import info.nightscout.interfaces.pump.DetailedBolusInfo;
+import info.nightscout.interfaces.pump.Insight;
+import info.nightscout.interfaces.pump.Pump;
+import info.nightscout.interfaces.pump.PumpEnactResult;
+import info.nightscout.interfaces.pump.PumpPluginBase;
+import info.nightscout.interfaces.pump.PumpSync;
+import info.nightscout.interfaces.pump.PumpSync.PumpState.TemporaryBasal;
+import info.nightscout.interfaces.pump.defs.ManufacturerType;
+import info.nightscout.interfaces.pump.defs.PumpDescription;
+import info.nightscout.interfaces.pump.defs.PumpType;
+import info.nightscout.interfaces.queue.CommandQueue;
+import info.nightscout.rx.bus.RxBus;
+import info.nightscout.rx.events.EventInitializationChanged;
+import info.nightscout.rx.events.EventOverviewBolusProgress;
+import info.nightscout.rx.events.EventRefreshOverview;
+import info.nightscout.rx.logging.AAPSLogger;
+import info.nightscout.rx.logging.LTag;
+import info.nightscout.shared.interfaces.ResourceHelper;
 import info.nightscout.shared.sharedPreferences.SP;
+import info.nightscout.shared.utils.DateUtil;
+import info.nightscout.shared.utils.T;
 
 @Singleton
-public class LocalInsightPlugin extends PumpPluginBase implements Pump, Constraints, InsightConnectionService.StateCallback {
+public class LocalInsightPlugin extends PumpPluginBase implements Pump, Insight, Constraints,
+        InsightConnectionService.StateCallback {
 
     private final AAPSLogger aapsLogger;
     private final RxBus rxBus;
@@ -147,7 +150,7 @@ public class LocalInsightPlugin extends PumpPluginBase implements Pump, Constrai
     private final InsightDbHelper insightDbHelper;
     private final PumpSync pumpSync;
 
-    public static final String ALERT_CHANNEL_ID = "AndroidAPS-InsightAlert";
+    public static final String ALERT_CHANNEL_ID = "AAPS-InsightAlert";
 
     private final PumpDescription pumpDescription;
     private InsightAlertService alertService;
@@ -232,7 +235,7 @@ public class LocalInsightPlugin extends PumpPluginBase implements Pump, Constrai
 
         pumpDescription = new PumpDescription();
         pumpDescription.fillFor(PumpType.ACCU_CHEK_INSIGHT);
-        lastBolusTimestamp = sp.getLong(R.string.key_insight_last_bolus_timestamp,0L);
+        lastBolusTimestamp = sp.getLong(R.string.key_insight_last_bolus_timestamp, 0L);
         lastBolusAmount = sp.getDouble(R.string.key_insight_last_bolus_amount, 0.0);
     }
 
@@ -472,7 +475,7 @@ public class LocalInsightPlugin extends PumpPluginBase implements Pump, Constrai
 
     @NonNull @Override
     public PumpEnactResult setNewBasalProfile(Profile profile) {
-        PumpEnactResult result = new PumpEnactResult(getInjector());
+        PumpEnactResult result = new PumpEnactResultObject(getInjector());
         rxBus.send(new EventDismissNotification(Notification.PROFILE_NOT_SET_NOT_INITIALIZED));
         List<BasalProfileBlock> profileBlocks = new ArrayList<>();
         for (int i = 0; i < profile.getBasalValues().length; i++) {
@@ -572,7 +575,7 @@ public class LocalInsightPlugin extends PumpPluginBase implements Pump, Constrai
         if (detailedBolusInfo.insulin == 0 || detailedBolusInfo.carbs > 0) {
             throw new IllegalArgumentException(detailedBolusInfo.toString(), new Exception());
         }
-        PumpEnactResult result = new PumpEnactResult(getInjector());
+        PumpEnactResult result = new PumpEnactResultObject(getInjector());
         double insulin = Math.round(detailedBolusInfo.insulin / 0.01) * 0.01;
         if (insulin > 0) {
             try {
@@ -587,16 +590,16 @@ public class LocalInsightPlugin extends PumpPluginBase implements Pump, Constrai
                     bolusCancelled = false;
                 }
                 result.success(true).enacted(true);
-                EventOverviewBolusProgress.Treatment t = new EventOverviewBolusProgress.Treatment(0, 0, detailedBolusInfo.getBolusType() == DetailedBolusInfo.BolusType.SMB);
+                EventOverviewBolusProgress.Treatment t = new EventOverviewBolusProgress.Treatment(0, 0, detailedBolusInfo.getBolusType() == DetailedBolusInfo.BolusType.SMB, detailedBolusInfo.getId());
                 final EventOverviewBolusProgress bolusingEvent = EventOverviewBolusProgress.INSTANCE;
                 bolusingEvent.setT(t);
-                bolusingEvent.setStatus(rh.gs(R.string.insight_delivered, 0d, insulin));
+                bolusingEvent.setStatus(rh.gs(R.string.bolus_delivered, 0d, insulin));
                 bolusingEvent.setPercent(0);
                 rxBus.send(bolusingEvent);
                 int trials = 0;
                 long now = dateUtil.now();
                 String serial = serialNumber();
-                insightDbHelper.createOrUpdate( new InsightBolusID(
+                insightDbHelper.createOrUpdate(new InsightBolusID(
                         now,
                         serial,
                         bolusID,
@@ -629,14 +632,14 @@ public class LocalInsightPlugin extends PumpPluginBase implements Pump, Constrai
                         trials = -1;
                         int percentBefore = bolusingEvent.getPercent();
                         bolusingEvent.setPercent((int) (100D / activeBolus.getInitialAmount() * (activeBolus.getInitialAmount() - activeBolus.getRemainingAmount())));
-                        bolusingEvent.setStatus(rh.gs(R.string.insight_delivered, activeBolus.getInitialAmount() - activeBolus.getRemainingAmount(), activeBolus.getInitialAmount()));
+                        bolusingEvent.setStatus(rh.gs(R.string.bolus_delivered, activeBolus.getInitialAmount() - activeBolus.getRemainingAmount(), activeBolus.getInitialAmount()));
                         if (percentBefore != bolusingEvent.getPercent())
                             rxBus.send(bolusingEvent);
                     } else {
                         synchronized ($bolusLock) {
                             if (bolusCancelled || trials == -1 || trials++ >= 5) {
                                 if (!bolusCancelled) {
-                                    bolusingEvent.setStatus(rh.gs(R.string.insight_delivered, insulin, insulin));
+                                    bolusingEvent.setStatus(rh.gs(R.string.bolus_delivered, insulin, insulin));
                                     bolusingEvent.setPercent(100);
                                     rxBus.send(bolusingEvent);
                                 }
@@ -688,7 +691,7 @@ public class LocalInsightPlugin extends PumpPluginBase implements Pump, Constrai
 
     @NonNull @Override
     public PumpEnactResult setTempBasalAbsolute(double absoluteRate, int durationInMinutes, @NonNull Profile profile, boolean enforceNew, @NonNull PumpSync.TemporaryBasalType tbrType) {
-        PumpEnactResult result = new PumpEnactResult(getInjector());
+        PumpEnactResult result = new PumpEnactResultObject(getInjector());
         if (activeBasalRate == null) return result;
         if (activeBasalRate.getActiveBasalRate() == 0) return result;
         double percent = 100D / activeBasalRate.getActiveBasalRate() * absoluteRate;
@@ -738,7 +741,7 @@ public class LocalInsightPlugin extends PumpPluginBase implements Pump, Constrai
 
     @NonNull @Override
     public PumpEnactResult setTempBasalPercent(int percent, int durationInMinutes, @NonNull Profile profile, boolean enforceNew, @NonNull PumpSync.TemporaryBasalType tbrType) {
-        PumpEnactResult result = new PumpEnactResult(getInjector());
+        PumpEnactResult result = new PumpEnactResultObject(getInjector());
         percent = (int) Math.round(((double) percent) / 10d) * 10;
         if (percent == 100) return cancelTempBasal(true);
         else if (percent > 250) percent = 250;
@@ -794,7 +797,7 @@ public class LocalInsightPlugin extends PumpPluginBase implements Pump, Constrai
     }
 
     public PumpEnactResult setExtendedBolusOnly(Double insulin, Integer durationInMinutes, boolean disableVibration) {
-        PumpEnactResult result = new PumpEnactResult(getInjector());
+        PumpEnactResult result = new PumpEnactResultObject(getInjector());
         try {
             DeliverBolusMessage bolusMessage = new DeliverBolusMessage();
             bolusMessage.setBolusType(BolusType.EXTENDED);
@@ -826,7 +829,7 @@ public class LocalInsightPlugin extends PumpPluginBase implements Pump, Constrai
 
     @NonNull @Override
     public PumpEnactResult cancelTempBasal(boolean enforceNew) {
-        PumpEnactResult result = new PumpEnactResult(getInjector());
+        PumpEnactResult result = new PumpEnactResultObject(getInjector());
         PumpEnactResult cancelEBResult = null;
         if (isFakingTempsByExtendedBoluses()) cancelEBResult = cancelExtendedBolusOnly();
         PumpEnactResult cancelTBRResult = cancelTempBasalOnly();
@@ -847,7 +850,7 @@ public class LocalInsightPlugin extends PumpPluginBase implements Pump, Constrai
     }
 
     private PumpEnactResult cancelTempBasalOnly() {
-        PumpEnactResult result = new PumpEnactResult(getInjector());
+        PumpEnactResult result = new PumpEnactResultObject(getInjector());
         try {
             alertService.ignore(AlertType.WARNING_36);
             connectionService.requestMessage(new CancelTBRMessage()).await();
@@ -890,7 +893,7 @@ public class LocalInsightPlugin extends PumpPluginBase implements Pump, Constrai
     }
 
     private PumpEnactResult cancelExtendedBolusOnly() {
-        PumpEnactResult result = new PumpEnactResult(getInjector());
+        PumpEnactResult result = new PumpEnactResultObject(getInjector());
         try {
             for (ActiveBolus activeBolus : activeBoluses) {
                 if (activeBolus.getBolusType() == BolusType.EXTENDED || activeBolus.getBolusType() == BolusType.MULTIWAVE) {
@@ -1009,7 +1012,7 @@ public class LocalInsightPlugin extends PumpPluginBase implements Pump, Constrai
     }
 
     public PumpEnactResult stopPump() {
-        PumpEnactResult result = new PumpEnactResult(getInjector());
+        PumpEnactResult result = new PumpEnactResultObject(getInjector());
         try {
             SetOperatingModeMessage operatingModeMessage = new SetOperatingModeMessage();
             operatingModeMessage.setOperatingMode(OperatingMode.STOPPED);
@@ -1031,7 +1034,7 @@ public class LocalInsightPlugin extends PumpPluginBase implements Pump, Constrai
     }
 
     public PumpEnactResult startPump() {
-        PumpEnactResult result = new PumpEnactResult(getInjector());
+        PumpEnactResult result = new PumpEnactResultObject(getInjector());
         try {
             SetOperatingModeMessage operatingModeMessage = new SetOperatingModeMessage();
             operatingModeMessage.setOperatingMode(OperatingMode.STARTED);
@@ -1053,7 +1056,7 @@ public class LocalInsightPlugin extends PumpPluginBase implements Pump, Constrai
     }
 
     public PumpEnactResult setTBROverNotification(boolean enabled) {
-        PumpEnactResult result = new PumpEnactResult(getInjector());
+        PumpEnactResult result = new PumpEnactResultObject(getInjector());
         boolean valueBefore = tbrOverNotificationBlock.isEnabled();
         tbrOverNotificationBlock.setEnabled(enabled);
         try {
@@ -1116,7 +1119,7 @@ public class LocalInsightPlugin extends PumpPluginBase implements Pump, Constrai
 
     @NonNull @Override
     public PumpEnactResult loadTDDs() {
-        return new PumpEnactResult(getInjector()).success(true);
+        return new PumpEnactResultObject(getInjector()).success(true);
     }
 
     private void readHistory() {
@@ -1173,7 +1176,7 @@ public class LocalInsightPlugin extends PumpPluginBase implements Pump, Constrai
         } catch (Exception e) {
             aapsLogger.error("Exception while reading history", e);
         }
-        new Handler(Looper.getMainLooper()).post(() -> rxBus.send(new EventRefreshOverview("LocalInsightPlugin::readHistory", false)));
+        rxBus.send(new EventRefreshOverview("LocalInsightPlugin::readHistory", false));
     }
 
     private void processHistoryEvents(String serial, List<HistoryEvent> historyEvents) {
@@ -1210,12 +1213,12 @@ public class LocalInsightPlugin extends PumpPluginBase implements Pump, Constrai
         for (TemporaryBasal temporaryBasal : temporaryBasals) {
             if (temporaryBasal.getDuration() == 0L) {                    // for Stop TBR event duration = 0L
                 pumpSync.syncStopTemporaryBasalWithPumpId(
-                            temporaryBasal.getTimestamp(),
-                            temporaryBasal.getPumpId(),
-                            PumpType.ACCU_CHEK_INSIGHT,
-                            serial);
+                        temporaryBasal.getTimestamp(),
+                        temporaryBasal.getPumpId(),
+                        PumpType.ACCU_CHEK_INSIGHT,
+                        serial);
             }
-            if (temporaryBasal.getRate() != 100.0){
+            if (temporaryBasal.getRate() != 100.0) {
                 pumpSync.syncTemporaryBasalWithPumpId(
                         temporaryBasal.getTimestamp(),
                         temporaryBasal.getRate(),
@@ -1237,7 +1240,8 @@ public class LocalInsightPlugin extends PumpPluginBase implements Pump, Constrai
             processCannulaFilledEvent(serial, (CannulaFilledEvent) event);
         else if (event instanceof TotalDailyDoseEvent)
             processTotalDailyDoseEvent(serial, (TotalDailyDoseEvent) event);
-        else if (event instanceof TubeFilledEvent) processTubeFilledEvent(serial, (TubeFilledEvent) event);
+        else if (event instanceof TubeFilledEvent)
+            processTubeFilledEvent(serial, (TubeFilledEvent) event);
         else if (event instanceof SniffingDoneEvent)
             processSniffingDoneEvent(serial, (SniffingDoneEvent) event);
         else if (event instanceof PowerUpEvent) processPowerUpEvent(serial, (PowerUpEvent) event);
@@ -1444,20 +1448,20 @@ public class LocalInsightPlugin extends PumpPluginBase implements Pump, Constrai
                     PumpType.ACCU_CHEK_INSIGHT,
                     serial);
             lastBolusTimestamp = bolusID.getTimestamp();
-            sp.putLong(R.string.key_insight_last_bolus_timestamp,lastBolusTimestamp);
+            sp.putLong(R.string.key_insight_last_bolus_timestamp, lastBolusTimestamp);
             lastBolusAmount = event.getImmediateAmount();
             sp.putDouble(R.string.key_insight_last_bolus_amount, lastBolusAmount);
         }
         if (event.getBolusType() == BolusType.EXTENDED || event.getBolusType() == BolusType.MULTIWAVE) {
             if (event.getDuration() > 0 && profileFunction.getProfile(bolusID.getTimestamp()) != null)
-                    pumpSync.syncExtendedBolusWithPumpId(
-                            bolusID.getTimestamp(),
-                            event.getExtendedAmount(),
-                            timestamp - startTimestamp,
-                            isFakingTempsByExtendedBoluses(),
-                            bolusID.getId(),
-                            PumpType.ACCU_CHEK_INSIGHT,
-                            serial);
+                pumpSync.syncExtendedBolusWithPumpId(
+                        bolusID.getTimestamp(),
+                        event.getExtendedAmount(),
+                        timestamp - startTimestamp,
+                        isFakingTempsByExtendedBoluses(),
+                        bolusID.getId(),
+                        PumpType.ACCU_CHEK_INSIGHT,
+                        serial);
         }
     }
 
@@ -1612,7 +1616,7 @@ public class LocalInsightPlugin extends PumpPluginBase implements Pump, Constrai
     public void onStateChanged(InsightState state) {
         if (state == InsightState.CONNECTED) {
             statusLoaded = false;
-            new Handler(Looper.getMainLooper()).post(() -> rxBus.send(new EventDismissNotification(Notification.INSIGHT_TIMEOUT_DURING_HANDSHAKE)));
+            rxBus.send(new EventDismissNotification(Notification.INSIGHT_TIMEOUT_DURING_HANDSHAKE));
         } else if (state == InsightState.NOT_PAIRED) {
             connectionService.withdrawConnectionRequest(this);
             statusLoaded = false;
@@ -1625,9 +1629,9 @@ public class LocalInsightPlugin extends PumpPluginBase implements Pump, Constrai
             activeTBR = null;
             activeBoluses = null;
             tbrOverNotificationBlock = null;
-            new Handler(Looper.getMainLooper()).post(() -> rxBus.send(new EventRefreshOverview("LocalInsightPlugin::onStateChanged", false)));
+            rxBus.send(new EventRefreshOverview("LocalInsightPlugin::onStateChanged", false));
         }
-        new Handler(Looper.getMainLooper()).post(() -> rxBus.send(new EventLocalInsightUpdateGUI()));
+        rxBus.send(new EventLocalInsightUpdateGUI());
     }
 
     @Override
@@ -1638,7 +1642,7 @@ public class LocalInsightPlugin extends PumpPluginBase implements Pump, Constrai
     @Override
     public void onTimeoutDuringHandshake() {
         Notification notification = new Notification(Notification.INSIGHT_TIMEOUT_DURING_HANDSHAKE, rh.gs(R.string.timeout_during_handshake), Notification.URGENT);
-        new Handler(Looper.getMainLooper()).post(() -> rxBus.send(new EventNewNotification(notification)));
+        rxBus.send(new EventNewNotification(notification));
     }
 
     @Override

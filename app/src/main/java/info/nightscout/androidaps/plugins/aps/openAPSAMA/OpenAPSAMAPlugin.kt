@@ -4,26 +4,37 @@ import android.content.Context
 import dagger.android.HasAndroidInjector
 import info.nightscout.androidaps.R
 import info.nightscout.androidaps.annotations.OpenForTesting
-import info.nightscout.androidaps.interfaces.Profile
-import info.nightscout.androidaps.database.AppRepository
-import info.nightscout.androidaps.database.ValueWrapper
-import info.nightscout.androidaps.interfaces.*
-import info.nightscout.shared.logging.AAPSLogger
-import info.nightscout.shared.logging.LTag
+import info.nightscout.androidaps.extensions.target
+import info.nightscout.androidaps.plugins.aps.OpenAPSFragment
 import info.nightscout.androidaps.plugins.aps.events.EventOpenAPSUpdateGui
 import info.nightscout.androidaps.plugins.aps.events.EventOpenAPSUpdateResultGui
 import info.nightscout.androidaps.plugins.aps.loop.ScriptReader
-import info.nightscout.androidaps.plugins.bus.RxBus
-import info.nightscout.androidaps.plugins.configBuilder.ConstraintChecker
-import info.nightscout.androidaps.plugins.iob.iobCobCalculator.AutosensResult
 import info.nightscout.androidaps.plugins.iob.iobCobCalculator.GlucoseStatusProvider
-import info.nightscout.androidaps.utils.DateUtil
-import info.nightscout.androidaps.utils.FabricPrivacy
-import info.nightscout.androidaps.utils.HardLimits
 import info.nightscout.androidaps.utils.Profiler
-import info.nightscout.androidaps.utils.Round
-import info.nightscout.androidaps.extensions.target
-import info.nightscout.androidaps.interfaces.ResourceHelper
+import info.nightscout.core.fabric.FabricPrivacy
+import info.nightscout.core.profile.secondsFromMidnight
+import info.nightscout.database.impl.AppRepository
+import info.nightscout.database.impl.ValueWrapper
+import info.nightscout.interfaces.aps.APS
+import info.nightscout.interfaces.aps.AutosensResult
+import info.nightscout.interfaces.aps.DetermineBasalAdapter
+import info.nightscout.interfaces.constraints.Constraint
+import info.nightscout.interfaces.constraints.Constraints
+import info.nightscout.interfaces.iob.IobCobCalculator
+import info.nightscout.interfaces.plugin.ActivePlugin
+import info.nightscout.interfaces.plugin.PluginBase
+import info.nightscout.interfaces.plugin.PluginDescription
+import info.nightscout.interfaces.plugin.PluginType
+import info.nightscout.interfaces.profile.Profile
+import info.nightscout.interfaces.profile.ProfileFunction
+import info.nightscout.interfaces.utils.HardLimits
+import info.nightscout.interfaces.utils.Round
+import info.nightscout.rx.bus.RxBus
+import info.nightscout.rx.logging.AAPSLogger
+import info.nightscout.rx.logging.LTag
+import info.nightscout.shared.interfaces.ResourceHelper
+import info.nightscout.shared.sharedPreferences.SP
+import info.nightscout.shared.utils.DateUtil
 import org.json.JSONException
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -34,7 +45,7 @@ class OpenAPSAMAPlugin @Inject constructor(
     injector: HasAndroidInjector,
     aapsLogger: AAPSLogger,
     private val rxBus: RxBus,
-    private val constraintChecker: ConstraintChecker,
+    private val constraintChecker: Constraints,
     rh: ResourceHelper,
     private val profileFunction: ProfileFunction,
     private val context: Context,
@@ -45,22 +56,24 @@ class OpenAPSAMAPlugin @Inject constructor(
     private val fabricPrivacy: FabricPrivacy,
     private val dateUtil: DateUtil,
     private val repository: AppRepository,
-    private val glucoseStatusProvider: GlucoseStatusProvider
-) : PluginBase(PluginDescription()
-    .mainType(PluginType.APS)
-    .fragmentClass(OpenAPSAMAFragment::class.java.name)
-    .pluginIcon(R.drawable.ic_generic_icon)
-    .pluginName(R.string.openapsama)
-    .shortName(R.string.oaps_shortname)
-    .preferencesId(R.xml.pref_openapsama)
-    .description(R.string.description_ama),
+    private val glucoseStatusProvider: GlucoseStatusProvider,
+    private val sp: SP
+) : PluginBase(
+    PluginDescription()
+        .mainType(PluginType.APS)
+        .fragmentClass(OpenAPSFragment::class.java.name)
+        .pluginIcon(R.drawable.ic_generic_icon)
+        .pluginName(R.string.openapsama)
+        .shortName(R.string.oaps_shortname)
+        .preferencesId(R.xml.pref_openapsama)
+        .description(R.string.description_ama),
     aapsLogger, rh, injector
-), APS {
+), APS, Constraints {
 
     // last values
     override var lastAPSRun: Long = 0
     override var lastAPSResult: DetermineBasalResultAMA? = null
-    override var lastDetermineBasalAdapter: DetermineBasalAdapterInterface? = null
+    override var lastDetermineBasalAdapter: DetermineBasalAdapter? = null
     override var lastAutosensResult: AutosensResult = AutosensResult()
 
     override fun specialEnableCondition(): Boolean {
@@ -86,11 +99,11 @@ class OpenAPSAMAPlugin @Inject constructor(
         val profile = profileFunction.getProfile()
         val pump = activePlugin.activePump
         if (profile == null) {
-            rxBus.send(EventOpenAPSUpdateResultGui(rh.gs(R.string.noprofileset)))
-            aapsLogger.debug(LTag.APS, rh.gs(R.string.noprofileset))
+            rxBus.send(EventOpenAPSUpdateResultGui(rh.gs(R.string.no_profile_set)))
+            aapsLogger.debug(LTag.APS, rh.gs(R.string.no_profile_set))
             return
         }
-        if (!isEnabled(PluginType.APS)) {
+        if (!isEnabled()) {
             rxBus.send(EventOpenAPSUpdateResultGui(rh.gs(R.string.openapsma_disabled)))
             aapsLogger.debug(LTag.APS, rh.gs(R.string.openapsma_disabled))
             return
@@ -115,15 +128,34 @@ class OpenAPSAMAPlugin @Inject constructor(
             inputConstraints.copyReasons(maxIOBAllowedConstraint)
         }.value()
         var minBg = hardLimits.verifyHardLimits(Round.roundTo(profile.getTargetLowMgdl(), 0.1), R.string.profile_low_target, HardLimits.VERY_HARD_LIMIT_MIN_BG[0], HardLimits.VERY_HARD_LIMIT_MIN_BG[1])
-        var maxBg = hardLimits.verifyHardLimits(Round.roundTo(profile.getTargetHighMgdl(), 0.1), R.string.profile_high_target, HardLimits.VERY_HARD_LIMIT_MAX_BG[0], HardLimits.VERY_HARD_LIMIT_MAX_BG[1])
+        var maxBg =
+            hardLimits.verifyHardLimits(Round.roundTo(profile.getTargetHighMgdl(), 0.1), R.string.profile_high_target, HardLimits.VERY_HARD_LIMIT_MAX_BG[0], HardLimits.VERY_HARD_LIMIT_MAX_BG[1])
         var targetBg = hardLimits.verifyHardLimits(profile.getTargetMgdl(), R.string.temp_target_value, HardLimits.VERY_HARD_LIMIT_TARGET_BG[0], HardLimits.VERY_HARD_LIMIT_TARGET_BG[1])
         var isTempTarget = false
         val tempTarget = repository.getTemporaryTargetActiveAt(dateUtil.now()).blockingGet()
         if (tempTarget is ValueWrapper.Existing) {
             isTempTarget = true
-            minBg = hardLimits.verifyHardLimits(tempTarget.value.lowTarget, R.string.temp_target_low_target, HardLimits.VERY_HARD_LIMIT_TEMP_MIN_BG[0].toDouble(), HardLimits.VERY_HARD_LIMIT_TEMP_MIN_BG[1].toDouble())
-            maxBg = hardLimits.verifyHardLimits(tempTarget.value.highTarget, R.string.temp_target_high_target, HardLimits.VERY_HARD_LIMIT_TEMP_MAX_BG[0].toDouble(), HardLimits.VERY_HARD_LIMIT_TEMP_MAX_BG[1].toDouble())
-            targetBg = hardLimits.verifyHardLimits(tempTarget.value.target(), R.string.temp_target_value, HardLimits.VERY_HARD_LIMIT_TEMP_TARGET_BG[0].toDouble(), HardLimits.VERY_HARD_LIMIT_TEMP_TARGET_BG[1].toDouble())
+            minBg =
+                hardLimits.verifyHardLimits(
+                    tempTarget.value.lowTarget,
+                    R.string.temp_target_low_target,
+                    HardLimits.VERY_HARD_LIMIT_TEMP_MIN_BG[0].toDouble(),
+                    HardLimits.VERY_HARD_LIMIT_TEMP_MIN_BG[1].toDouble()
+                )
+            maxBg =
+                hardLimits.verifyHardLimits(
+                    tempTarget.value.highTarget,
+                    R.string.temp_target_high_target,
+                    HardLimits.VERY_HARD_LIMIT_TEMP_MAX_BG[0].toDouble(),
+                    HardLimits.VERY_HARD_LIMIT_TEMP_MAX_BG[1].toDouble()
+                )
+            targetBg =
+                hardLimits.verifyHardLimits(
+                    tempTarget.value.target(),
+                    R.string.temp_target_value,
+                    HardLimits.VERY_HARD_LIMIT_TEMP_TARGET_BG[0].toDouble(),
+                    HardLimits.VERY_HARD_LIMIT_TEMP_TARGET_BG[1].toDouble()
+                )
         }
         if (!hardLimits.checkHardLimits(profile.dia, R.string.profile_dia, hardLimits.minDia(), hardLimits.maxDia())) return
         if (!hardLimits.checkHardLimits(profile.getIcTimeFromMidnight(Profile.secondsFromMidnight()), R.string.profile_carbs_ratio_value, hardLimits.minIC(), hardLimits.maxIC())) return
@@ -145,7 +177,8 @@ class OpenAPSAMAPlugin @Inject constructor(
         profiler.log(LTag.APS, "AMA data gathering", start)
         start = System.currentTimeMillis()
         try {
-            determineBasalAdapterAMAJS.setData(profile, maxIob, maxBasal, minBg, maxBg, targetBg, activePlugin.activePump.baseBasalRate, iobArray, glucoseStatus, mealData,
+            determineBasalAdapterAMAJS.setData(
+                profile, maxIob, maxBasal, minBg, maxBg, targetBg, activePlugin.activePump.baseBasalRate, iobArray, glucoseStatus, mealData,
                 lastAutosensResult.ratio,
                 isTempTarget
             )
@@ -162,7 +195,8 @@ class OpenAPSAMAPlugin @Inject constructor(
             lastAPSResult = null
             lastAPSRun = 0
         } else {
-            if (determineBasalResultAMA.rate == 0.0 && determineBasalResultAMA.duration == 0 && iobCobCalculator.getTempBasalIncludingConvertedExtended(dateUtil.now()) == null) determineBasalResultAMA.tempBasalRequested = false
+            if (determineBasalResultAMA.rate == 0.0 && determineBasalResultAMA.duration == 0 && iobCobCalculator.getTempBasalIncludingConvertedExtended(dateUtil.now()) == null) determineBasalResultAMA.isTempBasalRequested =
+                false
             determineBasalResultAMA.iob = iobArray[0]
             val now = System.currentTimeMillis()
             determineBasalResultAMA.json?.put("timestamp", dateUtil.toISOString(now))
@@ -174,5 +208,14 @@ class OpenAPSAMAPlugin @Inject constructor(
         rxBus.send(EventOpenAPSUpdateGui())
 
         //deviceStatus.suggested = determineBasalResultAMA.json;
+    }
+
+    override fun applyMaxIOBConstraints(maxIob: Constraint<Double>): Constraint<Double> {
+        if (isEnabled()) {
+            val maxIobPref: Double = sp.getDouble(R.string.key_openapsma_max_iob, 1.5)
+            maxIob.setIfSmaller(aapsLogger, maxIobPref, rh.gs(R.string.limitingiob, maxIobPref, rh.gs(R.string.maxvalueinpreferences)), this)
+            maxIob.setIfSmaller(aapsLogger, hardLimits.maxIobAMA(), rh.gs(R.string.limitingiob, hardLimits.maxIobAMA(), rh.gs(R.string.hardlimit)), this)
+        }
+        return maxIob
     }
 }

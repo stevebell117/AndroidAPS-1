@@ -27,58 +27,96 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.jjoe64.graphview.GraphView
 import dagger.android.HasAndroidInjector
 import dagger.android.support.DaggerFragment
-import info.nightscout.androidaps.Constants
 import info.nightscout.androidaps.R
 import info.nightscout.androidaps.data.ProfileSealed
-import info.nightscout.androidaps.database.AppRepository
-import info.nightscout.androidaps.database.entities.UserEntry.Action
-import info.nightscout.androidaps.database.entities.UserEntry.Sources
-import info.nightscout.androidaps.database.interfaces.end
-import info.nightscout.androidaps.databinding.OverviewFragmentBinding
-import info.nightscout.androidaps.dialogs.*
-import info.nightscout.androidaps.events.*
+import info.nightscout.androidaps.events.EventEffectiveProfileSwitchChanged
+import info.nightscout.androidaps.events.EventNewBG
+import info.nightscout.androidaps.events.EventPumpStatusChanged
 import info.nightscout.androidaps.extensions.directionToIcon
-import info.nightscout.androidaps.extensions.runOnUiThread
-import info.nightscout.androidaps.extensions.toVisibility
 import info.nightscout.androidaps.extensions.valueToUnitsString
-import info.nightscout.androidaps.interfaces.*
 import info.nightscout.androidaps.logging.UserEntryLogger
 import info.nightscout.androidaps.plugins.aps.loop.events.EventNewOpenLoopNotification
 import info.nightscout.androidaps.plugins.aps.openAPSSMB.DetermineBasalResultSMB
-import info.nightscout.androidaps.plugins.bus.RxBus
-import info.nightscout.androidaps.plugins.configBuilder.ConstraintChecker
-import info.nightscout.androidaps.plugins.constraints.bgQualityCheck.BgQualityCheckPlugin
-import info.nightscout.androidaps.plugins.general.automation.AutomationPlugin
-import info.nightscout.androidaps.plugins.general.nsclient.data.NSDeviceStatus
 import info.nightscout.androidaps.plugins.general.overview.activities.QuickWizardListActivity
-import info.nightscout.androidaps.plugins.general.overview.events.*
+import info.nightscout.androidaps.plugins.general.overview.events.EventUpdateOverviewCalcProgress
+import info.nightscout.androidaps.plugins.general.overview.events.EventUpdateOverviewGraph
+import info.nightscout.androidaps.plugins.general.overview.events.EventUpdateOverviewIobCob
+import info.nightscout.androidaps.plugins.general.overview.events.EventUpdateOverviewSensitivity
 import info.nightscout.androidaps.plugins.general.overview.graphData.GraphData
-import info.nightscout.androidaps.plugins.general.overview.notifications.NotificationStore
 import info.nightscout.androidaps.plugins.iob.iobCobCalculator.GlucoseStatusProvider
-import info.nightscout.androidaps.plugins.pump.common.defs.PumpType
 import info.nightscout.androidaps.plugins.pump.omnipod.eros.OmnipodErosPumpPlugin
-import info.nightscout.androidaps.plugins.source.DexcomPlugin
-import info.nightscout.androidaps.plugins.source.XdripPlugin
-import info.nightscout.androidaps.skins.SkinProvider
-import info.nightscout.androidaps.utils.DateUtil
 import info.nightscout.androidaps.utils.DefaultValueHelper
-import info.nightscout.androidaps.utils.FabricPrivacy
 import info.nightscout.androidaps.utils.ToastUtils
-import info.nightscout.androidaps.utils.TrendCalculator
 import info.nightscout.androidaps.utils.alertDialogs.OKDialog
-import info.nightscout.androidaps.utils.buildHelper.BuildHelper
 import info.nightscout.androidaps.utils.protection.ProtectionCheck
-import info.nightscout.androidaps.interfaces.ResourceHelper
-import info.nightscout.androidaps.utils.rx.AapsSchedulers
 import info.nightscout.androidaps.utils.ui.SingleClickButton
 import info.nightscout.androidaps.utils.ui.UIRunnable
-import info.nightscout.androidaps.utils.wizard.QuickWizard
-import info.nightscout.shared.logging.AAPSLogger
+import info.nightscout.automation.AutomationPlugin
+import info.nightscout.core.fabric.FabricPrivacy
+import info.nightscout.core.iob.displayText
+import info.nightscout.core.profile.toSignedUnitsString
+import info.nightscout.core.profile.toTargetRangeString
+import info.nightscout.core.profile.toUnits
+import info.nightscout.core.wizard.QuickWizard
+import info.nightscout.database.entities.UserEntry.Action
+import info.nightscout.database.entities.UserEntry.Sources
+import info.nightscout.database.entities.interfaces.end
+import info.nightscout.database.impl.AppRepository
+import info.nightscout.interfaces.BuildHelper
+import info.nightscout.interfaces.Config
+import info.nightscout.interfaces.Constants
+import info.nightscout.interfaces.GlucoseUnit
+import info.nightscout.interfaces.aps.Loop
+import info.nightscout.interfaces.constraints.Constraint
+import info.nightscout.interfaces.constraints.Constraints
+import info.nightscout.interfaces.iob.IobCobCalculator
+import info.nightscout.interfaces.plugin.ActivePlugin
+import info.nightscout.interfaces.plugin.PluginBase
+import info.nightscout.interfaces.profile.Profile
+import info.nightscout.interfaces.profile.ProfileFunction
+import info.nightscout.interfaces.pump.defs.PumpType
+import info.nightscout.interfaces.queue.CommandQueue
+import info.nightscout.interfaces.ui.ActivityNames
+import info.nightscout.interfaces.utils.JsonHelper
+import info.nightscout.interfaces.utils.TrendCalculator
+import info.nightscout.plugins.constraints.bgQualityCheck.BgQualityCheckPlugin
+import info.nightscout.plugins.databinding.OverviewFragmentBinding
+import info.nightscout.plugins.general.overview.notifications.NotificationStore
+import info.nightscout.plugins.general.overview.notifications.events.EventUpdateOverviewNotification
+import info.nightscout.plugins.skins.SkinProvider
+import info.nightscout.plugins.source.DexcomPlugin
+import info.nightscout.plugins.source.XdripPlugin
+import info.nightscout.plugins.sync.nsclient.data.NSSettingsStatus
+import info.nightscout.plugins.sync.nsclient.data.ProcessedDeviceStatusData
+import info.nightscout.plugins.ui.StatusLightHandler
+import info.nightscout.rx.AapsSchedulers
+import info.nightscout.rx.bus.RxBus
+import info.nightscout.rx.events.EventAcceptOpenLoopChange
+import info.nightscout.rx.events.EventExtendedBolusChange
+import info.nightscout.rx.events.EventMobileToWear
+import info.nightscout.rx.events.EventPreferenceChange
+import info.nightscout.rx.events.EventRefreshOverview
+import info.nightscout.rx.events.EventScale
+import info.nightscout.rx.events.EventTempBasalChange
+import info.nightscout.rx.events.EventTempTargetChange
+import info.nightscout.rx.logging.AAPSLogger
+import info.nightscout.rx.weardata.EventData
+import info.nightscout.shared.extensions.runOnUiThread
+import info.nightscout.shared.extensions.toVisibility
+import info.nightscout.shared.interfaces.ResourceHelper
 import info.nightscout.shared.sharedPreferences.SP
-import info.nightscout.shared.weardata.EventData
+import info.nightscout.shared.utils.DateUtil
+import info.nightscout.ui.dialogs.CalibrationDialog
+import info.nightscout.ui.dialogs.CarbsDialog
+import info.nightscout.ui.dialogs.InsulinDialog
+import info.nightscout.ui.dialogs.LoopDialog
+import info.nightscout.ui.dialogs.ProfileSwitchDialog
+import info.nightscout.ui.dialogs.TempTargetDialog
+import info.nightscout.ui.dialogs.TreatmentDialog
+import info.nightscout.ui.dialogs.WizardDialog
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.kotlin.plusAssign
-import java.util.*
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import kotlin.math.abs
@@ -94,9 +132,10 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
     @Inject lateinit var rh: ResourceHelper
     @Inject lateinit var defaultValueHelper: DefaultValueHelper
     @Inject lateinit var profileFunction: ProfileFunction
-    @Inject lateinit var constraintChecker: ConstraintChecker
+    @Inject lateinit var constraintChecker: Constraints
     @Inject lateinit var statusLightHandler: StatusLightHandler
-    @Inject lateinit var nsDeviceStatus: NSDeviceStatus
+    @Inject lateinit var processedDeviceStatusData: ProcessedDeviceStatusData
+    @Inject lateinit var nsSettingsStatus: NSSettingsStatus
     @Inject lateinit var loop: Loop
     @Inject lateinit var activePlugin: ActivePlugin
     @Inject lateinit var iobCobCalculator: IobCobCalculator
@@ -118,9 +157,9 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
     @Inject lateinit var repository: AppRepository
     @Inject lateinit var glucoseStatusProvider: GlucoseStatusProvider
     @Inject lateinit var overviewData: OverviewData
-    @Inject lateinit var overviewPlugin: OverviewPlugin
     @Inject lateinit var automationPlugin: AutomationPlugin
     @Inject lateinit var bgQualityCheckPlugin: BgQualityCheckPlugin
+    @Inject lateinit var activityNames: ActivityNames
 
     private val disposable = CompositeDisposable()
 
@@ -183,7 +222,7 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
             overviewData.rangeToDisplay += 6
             overviewData.rangeToDisplay = if (overviewData.rangeToDisplay > 24) 6 else overviewData.rangeToDisplay
             sp.putInt(R.string.key_rangetodisplay, overviewData.rangeToDisplay)
-            rxBus.send(EventPreferenceChange(rh, R.string.key_rangetodisplay))
+            rxBus.send(EventPreferenceChange(rh.gs(R.string.key_rangetodisplay)))
             sp.putBoolean(R.string.key_objectiveusescale, true)
             false
         }
@@ -225,7 +264,7 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
         disposable += activePlugin.activeOverview.overviewBus
             .toObservable(EventUpdateOverviewIobCob::class.java)
             .debounce(1L, TimeUnit.SECONDS)
-            .observeOn(aapsSchedulers.main)
+            .observeOn(aapsSchedulers.io)
             .subscribe({ updateIobCob() }, fabricPrivacy::logException)
         disposable += activePlugin.activeOverview.overviewBus
             .toObservable(EventUpdateOverviewSensitivity::class.java)
@@ -238,10 +277,6 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
             .observeOn(aapsSchedulers.main)
             .subscribe({ updateGraph() }, fabricPrivacy::logException)
         disposable += activePlugin.activeOverview.overviewBus
-            .toObservable(EventUpdateOverviewPumpStatus::class.java)
-            .observeOn(aapsSchedulers.main)
-            .subscribe({ updatePumpStatus() }, fabricPrivacy::logException)
-        disposable += activePlugin.activeOverview.overviewBus
             .toObservable(EventUpdateOverviewNotification::class.java)
             .observeOn(aapsSchedulers.main)
             .subscribe({ updateNotification() }, fabricPrivacy::logException)
@@ -251,13 +286,13 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
             .subscribe({
                            overviewData.rangeToDisplay = it.hours
                            sp.putInt(R.string.key_rangetodisplay, it.hours)
-                           rxBus.send(EventPreferenceChange(rh, R.string.key_rangetodisplay))
+                           rxBus.send(EventPreferenceChange(rh.gs(R.string.key_rangetodisplay)))
                            sp.putBoolean(R.string.key_objectiveusescale, true)
                        }, fabricPrivacy::logException)
         disposable += rxBus
             .toObservable(EventNewBG::class.java)
             .debounce(1L, TimeUnit.SECONDS)
-            .observeOn(aapsSchedulers.main)
+            .observeOn(aapsSchedulers.io)
             .subscribe({ updateBg() }, fabricPrivacy::logException)
         disposable += rxBus
             .toObservable(EventRefreshOverview::class.java)
@@ -288,19 +323,19 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
                        }, fabricPrivacy::logException)
         disposable += rxBus
             .toObservable(EventEffectiveProfileSwitchChanged::class.java)
-            .observeOn(aapsSchedulers.main)
+            .observeOn(aapsSchedulers.io)
             .subscribe({ updateProfile() }, fabricPrivacy::logException)
         disposable += rxBus
             .toObservable(EventTempTargetChange::class.java)
-            .observeOn(aapsSchedulers.main)
+            .observeOn(aapsSchedulers.io)
             .subscribe({ updateTemporaryTarget() }, fabricPrivacy::logException)
         disposable += rxBus
             .toObservable(EventExtendedBolusChange::class.java)
-            .observeOn(aapsSchedulers.main)
+            .observeOn(aapsSchedulers.io)
             .subscribe({ updateExtendedBolus() }, fabricPrivacy::logException)
         disposable += rxBus
             .toObservable(EventTempBasalChange::class.java)
-            .observeOn(aapsSchedulers.main)
+            .observeOn(aapsSchedulers.io)
             .subscribe({ updateTemporaryBasal() }, fabricPrivacy::logException)
 
         refreshLoop = Runnable {
@@ -309,7 +344,7 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
         }
         handler.postDelayed(refreshLoop, 60 * 1000L)
 
-        refreshAll()
+        handler.post { refreshAll() }
         updatePumpStatus()
         updateCalcProgress()
     }
@@ -317,17 +352,19 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
     fun refreshAll() {
         runOnUiThread {
             _binding ?: return@runOnUiThread
-            updateBg()
             updateTime()
-            updateProfile()
-            updateTemporaryBasal()
-            updateExtendedBolus()
-            updateTemporaryTarget()
-            updateIobCob()
             updateSensitivity()
             updateGraph()
             updateNotification()
         }
+        updateBg()
+        updateTemporaryBasal()
+        updateExtendedBolus()
+        updateIobCob()
+        processButtonsVisibility()
+        processAps()
+        updateProfile()
+        updateTemporaryTarget()
     }
 
     @Synchronized
@@ -346,31 +383,34 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
                     activity,
                     ProtectionCheck.Protection.BOLUS,
                     UIRunnable { if (isAdded) TreatmentDialog().show(childFragmentManager, "Overview") })
+
                 R.id.wizard_button       -> protectionCheck.queryProtection(
                     activity,
                     ProtectionCheck.Protection.BOLUS,
                     UIRunnable { if (isAdded) WizardDialog().show(childFragmentManager, "Overview") })
+
                 R.id.insulin_button      -> protectionCheck.queryProtection(
                     activity,
                     ProtectionCheck.Protection.BOLUS,
                     UIRunnable { if (isAdded) InsulinDialog().show(childFragmentManager, "Overview") })
+
                 R.id.quick_wizard_button -> protectionCheck.queryProtection(activity, ProtectionCheck.Protection.BOLUS, UIRunnable { if (isAdded) onClickQuickWizard() })
                 R.id.carbs_button        -> protectionCheck.queryProtection(
                     activity,
                     ProtectionCheck.Protection.BOLUS,
                     UIRunnable { if (isAdded) CarbsDialog().show(childFragmentManager, "Overview") })
+
                 R.id.temp_target         -> protectionCheck.queryProtection(
                     activity,
                     ProtectionCheck.Protection.BOLUS,
                     UIRunnable { if (isAdded) TempTargetDialog().show(childFragmentManager, "Overview") })
 
                 R.id.active_profile      -> {
-                    ProfileViewerDialog().also { pvd ->
-                        pvd.arguments = Bundle().also {
-                            it.putLong("time", dateUtil.now())
-                            it.putInt("mode", ProfileViewerDialog.Mode.RUNNING_PROFILE.ordinal)
-                        }
-                    }.show(childFragmentManager, "ProfileViewDialog")
+                    activityNames.runProfileViewerDialog(
+                        childFragmentManager,
+                        dateUtil.now(),
+                        ActivityNames.Mode.RUNNING_PROFILE
+                    )
                 }
 
                 R.id.cgm_button          -> {
@@ -380,7 +420,7 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
                         dexcomMediator.findDexcomPackageName()?.let {
                             openCgmApp(it)
                         }
-                            ?: ToastUtils.showToastInUiThread(activity, rh.gs(R.string.dexcom_app_not_installed))
+                            ?: ToastUtils.infoToast(activity, rh.gs(R.string.dexcom_app_not_installed))
                     }
                 }
 
@@ -396,9 +436,9 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
                                         .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
                                 )
                             }
-                                ?: ToastUtils.showToastInUiThread(activity, rh.gs(R.string.dexcom_app_not_installed))
+                                ?: ToastUtils.infoToast(activity, rh.gs(R.string.dexcom_app_not_installed))
                         } catch (e: ActivityNotFoundException) {
-                            ToastUtils.showToastInUiThread(activity, rh.gs(R.string.g5appnotdetected))
+                            ToastUtils.infoToast(activity, rh.gs(R.string.g5appnotdetected))
                         }
                     }
                 }
@@ -417,7 +457,7 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
                                                                       uel.log(Action.ACCEPTS_TEMP_BASAL, Sources.Overview)
                                                                       (context?.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager?)?.cancel(Constants.notificationID)
                                                                       rxBus.send(EventMobileToWear(EventData.CancelNotification(dateUtil.now())))
-                                                                      Thread { loop.acceptChangeRequest() }.run()
+                                                                      handler.post { loop.acceptChangeRequest() }
                                                                       binding.buttonsLayout.acceptTempButton.visibility = View.GONE
                                                                   })
                                 })
@@ -470,7 +510,7 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
 
             R.id.temp_target         -> v.performClick()
             R.id.active_profile      -> activity?.let { activity ->
-                if (loop.isDisconnected) OKDialog.show(activity, rh.gs(R.string.not_available_full), rh.gs(R.string.smscommunicator_pumpdisconnected))
+                if (loop.isDisconnected) OKDialog.show(activity, rh.gs(R.string.not_available_full), rh.gs(R.string.smscommunicator_pump_disconnected))
                 else
                     protectionCheck.queryProtection(
                         activity,
@@ -514,13 +554,16 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
 
         // QuickWizard button
         val quickWizardEntry = quickWizard.getActive()
-        if (quickWizardEntry != null && lastBG != null && profile != null && pump.isInitialized() && !pump.isSuspended() && !loop.isDisconnected) {
-            binding.buttonsLayout.quickWizardButton.visibility = View.VISIBLE
-            val wizard = quickWizardEntry.doCalc(profile, profileName, lastBG, false)
-            binding.buttonsLayout.quickWizardButton.text = quickWizardEntry.buttonText() + "\n" + rh.gs(R.string.format_carbs, quickWizardEntry.carbs()) +
-                " " + rh.gs(R.string.formatinsulinunits, wizard.calculatedTotalInsulin)
-            if (wizard.calculatedTotalInsulin <= 0) binding.buttonsLayout.quickWizardButton.visibility = View.GONE
-        } else binding.buttonsLayout.quickWizardButton.visibility = View.GONE
+        runOnUiThread {
+            _binding ?: return@runOnUiThread
+            if (quickWizardEntry != null && lastBG != null && profile != null && pump.isInitialized() && !pump.isSuspended() && !loop.isDisconnected) {
+                binding.buttonsLayout.quickWizardButton.visibility = View.VISIBLE
+                val wizard = quickWizardEntry.doCalc(profile, profileName, lastBG, false)
+                binding.buttonsLayout.quickWizardButton.text = quickWizardEntry.buttonText() + "\n" + rh.gs(R.string.format_carbs, quickWizardEntry.carbs()) +
+                    " " + rh.gs(R.string.formatinsulinunits, wizard.calculatedTotalInsulin)
+                if (wizard.calculatedTotalInsulin <= 0) binding.buttonsLayout.quickWizardButton.visibility = View.GONE
+            } else binding.buttonsLayout.quickWizardButton.visibility = View.GONE
+        }
 
         // **** Temp button ****
         val lastRun = loop.lastRun
@@ -531,68 +574,71 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
             (lastRun.lastOpenModeAccept == 0L || lastRun.lastOpenModeAccept < lastRun.lastAPSRun) &&// never accepted or before last result
             lastRun.constraintsProcessed?.isChangeRequested == true // change is requested
 
-        if (showAcceptButton && pump.isInitialized() && !pump.isSuspended() && (loop as PluginBase).isEnabled()) {
-            binding.buttonsLayout.acceptTempButton.visibility = View.VISIBLE
-            binding.buttonsLayout.acceptTempButton.text = "${rh.gs(R.string.setbasalquestion)}\n${lastRun!!.constraintsProcessed}"
-        } else {
-            binding.buttonsLayout.acceptTempButton.visibility = View.GONE
-        }
-
-        // **** Various treatment buttons ****
-        binding.buttonsLayout.carbsButton.visibility =
-            ((!activePlugin.activePump.pumpDescription.storesCarbInfo || pump.isInitialized() && !pump.isSuspended()) && profile != null
-                && sp.getBoolean(R.string.key_show_carbs_button, true)).toVisibility()
-        binding.buttonsLayout.treatmentButton.visibility = (!loop.isDisconnected && pump.isInitialized() && !pump.isSuspended() && profile != null
-            && sp.getBoolean(R.string.key_show_treatment_button, false)).toVisibility()
-        binding.buttonsLayout.wizardButton.visibility = (!loop.isDisconnected && pump.isInitialized() && !pump.isSuspended() && profile != null
-            && sp.getBoolean(R.string.key_show_wizard_button, true)).toVisibility()
-        binding.buttonsLayout.insulinButton.visibility = (!loop.isDisconnected && pump.isInitialized() && !pump.isSuspended() && profile != null
-            && sp.getBoolean(R.string.key_show_insulin_button, true)).toVisibility()
-
-        // **** Calibration & CGM buttons ****
-        val xDripIsBgSource = xdripPlugin.isEnabled()
-        val dexcomIsSource = dexcomPlugin.isEnabled()
-        binding.buttonsLayout.calibrationButton.visibility = (xDripIsBgSource && actualBG != null && sp.getBoolean(R.string.key_show_calibration_button, true)).toVisibility()
-        if (dexcomIsSource) {
-            binding.buttonsLayout.cgmButton.setCompoundDrawablesWithIntrinsicBounds(null, rh.gd(R.drawable.ic_byoda), null, null)
-            for (drawable in binding.buttonsLayout.cgmButton.compoundDrawables) {
-                drawable?.mutate()
-                drawable?.colorFilter = PorterDuffColorFilter(rh.gac(context, R.attr.cgmDexColor), PorterDuff.Mode.SRC_IN)
+        runOnUiThread {
+            _binding ?: return@runOnUiThread
+            if (showAcceptButton && pump.isInitialized() && !pump.isSuspended() && (loop as PluginBase).isEnabled()) {
+                binding.buttonsLayout.acceptTempButton.visibility = View.VISIBLE
+                binding.buttonsLayout.acceptTempButton.text = "${rh.gs(R.string.setbasalquestion)}\n${lastRun!!.constraintsProcessed}"
+            } else {
+                binding.buttonsLayout.acceptTempButton.visibility = View.GONE
             }
-            binding.buttonsLayout.cgmButton.setTextColor(rh.gac(context, R.attr.cgmDexColor))
-        } else if (xDripIsBgSource) {
-            binding.buttonsLayout.cgmButton.setCompoundDrawablesWithIntrinsicBounds(null, rh.gd(R.drawable.ic_xdrip), null, null)
-            for (drawable in binding.buttonsLayout.cgmButton.compoundDrawables) {
-                drawable?.mutate()
-                drawable?.colorFilter = PorterDuffColorFilter(rh.gac(context, R.attr.cgmXdripColor), PorterDuff.Mode.SRC_IN)
+
+            // **** Various treatment buttons ****
+            binding.buttonsLayout.carbsButton.visibility =
+                (/*(!activePlugin.activePump.pumpDescription.storesCarbInfo || pump.isInitialized() && !pump.isSuspended()) &&*/ profile != null
+                    && sp.getBoolean(R.string.key_show_carbs_button, true)).toVisibility()
+            binding.buttonsLayout.treatmentButton.visibility = (!loop.isDisconnected && pump.isInitialized() && !pump.isSuspended() && profile != null
+                && sp.getBoolean(R.string.key_show_treatment_button, false)).toVisibility()
+            binding.buttonsLayout.wizardButton.visibility = (!loop.isDisconnected && pump.isInitialized() && !pump.isSuspended() && profile != null
+                && sp.getBoolean(R.string.key_show_wizard_button, true)).toVisibility()
+            binding.buttonsLayout.insulinButton.visibility = (!loop.isDisconnected && pump.isInitialized() && !pump.isSuspended() && profile != null
+                && sp.getBoolean(R.string.key_show_insulin_button, true)).toVisibility()
+
+            // **** Calibration & CGM buttons ****
+            val xDripIsBgSource = xdripPlugin.isEnabled()
+            val dexcomIsSource = dexcomPlugin.isEnabled()
+            binding.buttonsLayout.calibrationButton.visibility = (xDripIsBgSource && actualBG != null && sp.getBoolean(R.string.key_show_calibration_button, true)).toVisibility()
+            if (dexcomIsSource) {
+                binding.buttonsLayout.cgmButton.setCompoundDrawablesWithIntrinsicBounds(null, rh.gd(R.drawable.ic_byoda), null, null)
+                for (drawable in binding.buttonsLayout.cgmButton.compoundDrawables) {
+                    drawable?.mutate()
+                    drawable?.colorFilter = PorterDuffColorFilter(rh.gac(context, R.attr.cgmDexColor), PorterDuff.Mode.SRC_IN)
+                }
+                binding.buttonsLayout.cgmButton.setTextColor(rh.gac(context, R.attr.cgmDexColor))
+            } else if (xDripIsBgSource) {
+                binding.buttonsLayout.cgmButton.setCompoundDrawablesWithIntrinsicBounds(null, rh.gd(R.drawable.ic_xdrip), null, null)
+                for (drawable in binding.buttonsLayout.cgmButton.compoundDrawables) {
+                    drawable?.mutate()
+                    drawable?.colorFilter = PorterDuffColorFilter(rh.gac(context, R.attr.cgmXdripColor), PorterDuff.Mode.SRC_IN)
+                }
+                binding.buttonsLayout.cgmButton.setTextColor(rh.gac(context, R.attr.cgmXdripColor))
             }
-            binding.buttonsLayout.cgmButton.setTextColor(rh.gac(context, R.attr.cgmXdripColor))
-        }
-        binding.buttonsLayout.cgmButton.visibility = (sp.getBoolean(R.string.key_show_cgm_button, false) && (xDripIsBgSource || dexcomIsSource)).toVisibility()
+            binding.buttonsLayout.cgmButton.visibility = (sp.getBoolean(R.string.key_show_cgm_button, false) && (xDripIsBgSource || dexcomIsSource)).toVisibility()
 
-        // Automation buttons
-        binding.buttonsLayout.userButtonsLayout.removeAllViews()
-        val events = automationPlugin.userEvents()
-        if (!loop.isDisconnected && pump.isInitialized() && !pump.isSuspended() && profile != null)
-            for (event in events)
-                if (event.isEnabled && event.trigger.shouldRun())
-                    context?.let { context ->
-                        SingleClickButton(context).also {
-                            it.setTextColor(rh.gac(context, R.attr.treatmentButton))
-                            it.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
-                            it.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 0.5f).also { l ->
-                                l.setMargins(0, 0, rh.dpToPx(-4), 0)
-                            }
-                            it.setCompoundDrawablesWithIntrinsicBounds(null, rh.gd(R.drawable.ic_danar_useropt), null, null)
-                            it.text = event.title
+            // Automation buttons
+            binding.buttonsLayout.userButtonsLayout.removeAllViews()
+            val events = automationPlugin.userEvents()
+            if (!loop.isDisconnected && pump.isInitialized() && !pump.isSuspended() && profile != null)
+                for (event in events)
+                    if (event.isEnabled && event.trigger.shouldRun())
+                        context?.let { context ->
+                            SingleClickButton(context, null, R.attr.customBtnStyle).also {
+                                it.setTextColor(rh.gac(context, R.attr.treatmentButton))
+                                it.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+                                it.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 0.5f).also { l ->
+                                    l.setMargins(0, 0, rh.dpToPx(-4), 0)
+                                }
+                                it.setCompoundDrawablesWithIntrinsicBounds(null, rh.gd(R.drawable.ic_danar_useropt), null, null)
+                                it.text = event.title
 
-                            it.setOnClickListener {
-                                OKDialog.showConfirmation(context, rh.gs(R.string.run_question, event.title), { handler.post { automationPlugin.processEvent(event) } })
+                                it.setOnClickListener {
+                                    OKDialog.showConfirmation(context, rh.gs(R.string.run_question, event.title), { handler.post { automationPlugin.processEvent(event) } })
+                                }
+                                binding.buttonsLayout.userButtonsLayout.addView(it)
                             }
-                            binding.buttonsLayout.userButtonsLayout.addView(it)
                         }
-                    }
-        binding.buttonsLayout.userButtonsLayout.visibility = events.isNotEmpty().toVisibility()
+            binding.buttonsLayout.userButtonsLayout.visibility = events.isNotEmpty().toVisibility()
+        }
     }
 
     private fun processAps() {
@@ -609,103 +655,91 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
             }
         }
 
-        if (config.APS && pump.pumpDescription.isTempBasalCapable) {
-            binding.infoLayout.apsMode.visibility = View.VISIBLE
-            binding.infoLayout.timeLayout.visibility = View.GONE
-            when {
-                (loop as PluginBase).isEnabled() && loop.isSuperBolus                       -> {
-                    binding.infoLayout.apsMode.setImageResource(R.drawable.ic_loop_superbolus)
-                    apsModeSetA11yLabel(R.string.superbolus)
-                    binding.infoLayout.apsModeText.text = dateUtil.age(loop.minutesToEndOfSuspend() * 60000L, true, rh)
-                    binding.infoLayout.apsModeText.visibility = View.VISIBLE
-                }
+        runOnUiThread {
+            _binding ?: return@runOnUiThread
+            if (config.APS && pump.pumpDescription.isTempBasalCapable) {
+                binding.infoLayout.apsMode.visibility = View.VISIBLE
+                binding.infoLayout.timeLayout.visibility = View.GONE
+                when {
+                    (loop as PluginBase).isEnabled() && loop.isSuperBolus                       -> {
+                        binding.infoLayout.apsMode.setImageResource(R.drawable.ic_loop_superbolus)
+                        apsModeSetA11yLabel(R.string.superbolus)
+                        binding.infoLayout.apsModeText.text = dateUtil.age(loop.minutesToEndOfSuspend() * 60000L, true, rh)
+                        binding.infoLayout.apsModeText.visibility = View.VISIBLE
+                    }
 
-                loop.isDisconnected                                                         -> {
-                    binding.infoLayout.apsMode.setImageResource(R.drawable.ic_loop_disconnected)
-                    apsModeSetA11yLabel(R.string.disconnected)
-                    binding.infoLayout.apsModeText.text = dateUtil.age(loop.minutesToEndOfSuspend() * 60000L, true, rh)
-                    binding.infoLayout.apsModeText.visibility = View.VISIBLE
-                }
+                    loop.isDisconnected                                                         -> {
+                        binding.infoLayout.apsMode.setImageResource(R.drawable.ic_loop_disconnected)
+                        apsModeSetA11yLabel(R.string.disconnected)
+                        binding.infoLayout.apsModeText.text = dateUtil.age(loop.minutesToEndOfSuspend() * 60000L, true, rh)
+                        binding.infoLayout.apsModeText.visibility = View.VISIBLE
+                    }
 
-                (loop as PluginBase).isEnabled() && loop.isSuspended                        -> {
-                    binding.infoLayout.apsMode.setImageResource(R.drawable.ic_loop_paused)
-                    apsModeSetA11yLabel(R.string.suspendloop_label)
-                    binding.infoLayout.apsModeText.text = dateUtil.age(loop.minutesToEndOfSuspend() * 60000L, true, rh)
-                    binding.infoLayout.apsModeText.visibility = View.VISIBLE
-                }
+                    (loop as PluginBase).isEnabled() && loop.isSuspended                        -> {
+                        binding.infoLayout.apsMode.setImageResource(R.drawable.ic_loop_paused)
+                        apsModeSetA11yLabel(R.string.suspendloop_label)
+                        binding.infoLayout.apsModeText.text = dateUtil.age(loop.minutesToEndOfSuspend() * 60000L, true, rh)
+                        binding.infoLayout.apsModeText.visibility = View.VISIBLE
+                    }
 
-                pump.isSuspended()                                                          -> {
-                    binding.infoLayout.apsMode.setImageResource(
-                        if (pump.model() == PumpType.OMNIPOD_EROS || pump.model() == PumpType.OMNIPOD_DASH) {
-                            // For Omnipod, indicate the pump as disconnected when it's suspended.
-                            // The only way to 'reconnect' it, is through the Omnipod tab
-                            apsModeSetA11yLabel(R.string.disconnected)
-                            R.drawable.ic_loop_disconnected
-                        } else {
-                            apsModeSetA11yLabel(R.string.pump_paused)
-                            R.drawable.ic_loop_paused
-                        }
-                    )
-                    binding.infoLayout.apsModeText.visibility = View.GONE
-                }
-
-                (loop as PluginBase).isEnabled() && closedLoopEnabled.value() && loop.isLGS -> {
-                    binding.infoLayout.apsMode.setImageResource(R.drawable.ic_loop_lgs)
-                    apsModeSetA11yLabel(R.string.uel_lgs_loop_mode)
-                    binding.infoLayout.apsModeText.visibility = View.GONE
-                }
-
-                (loop as PluginBase).isEnabled() && closedLoopEnabled.value()               -> {
-                    binding.infoLayout.apsMode.setImageResource(R.drawable.ic_loop_closed)
-                    apsModeSetA11yLabel(R.string.closedloop)
-                    binding.infoLayout.apsModeText.visibility = View.GONE
-                }
-
-                (loop as PluginBase).isEnabled() && !closedLoopEnabled.value()              -> {
-                    binding.infoLayout.apsMode.setImageResource(R.drawable.ic_loop_open)
-                    apsModeSetA11yLabel(R.string.openloop)
-                    binding.infoLayout.apsModeText.visibility = View.GONE
-                }
-
-                else                                                                        -> {
-                    binding.infoLayout.apsMode.setImageResource(R.drawable.ic_loop_disabled)
-                    apsModeSetA11yLabel(R.string.disabledloop)
-                    binding.infoLayout.apsModeText.visibility = View.GONE
-                }
-            }
-            // Show variable sensitivity
-            val request = loop.lastRun?.request
-            if (request is DetermineBasalResultSMB) {
-                val isfMgdl = profileFunction.getProfile()?.getIsfMgdl()
-                val variableSens = request.variableSens
-                if (variableSens != isfMgdl && variableSens != null && isfMgdl != null) {
-                    binding.infoLayout.variableSensitivity.text =
-                        String.format(
-                            Locale.getDefault(), "%1$.1f→%2$.1f",
-                            Profile.toUnits(isfMgdl, isfMgdl * Constants.MGDL_TO_MMOLL, profileFunction.getUnits()),
-                            Profile.toUnits(variableSens, variableSens * Constants.MGDL_TO_MMOLL, profileFunction.getUnits())
+                    pump.isSuspended()                                                          -> {
+                        binding.infoLayout.apsMode.setImageResource(
+                            if (pump.model() == PumpType.OMNIPOD_EROS || pump.model() == PumpType.OMNIPOD_DASH) {
+                                // For Omnipod, indicate the pump as disconnected when it's suspended.
+                                // The only way to 'reconnect' it, is through the Omnipod tab
+                                apsModeSetA11yLabel(R.string.disconnected)
+                                R.drawable.ic_loop_disconnected
+                            } else {
+                                apsModeSetA11yLabel(R.string.pump_paused)
+                                R.drawable.ic_loop_paused
+                            }
                         )
-                    binding.infoLayout.variableSensitivity.visibility = View.VISIBLE
-                } else binding.infoLayout.variableSensitivity.visibility = View.GONE
-            } else binding.infoLayout.variableSensitivity.visibility = View.GONE
-        } else {
-            //nsclient
-            binding.infoLayout.apsMode.visibility = View.GONE
-            binding.infoLayout.apsModeText.visibility = View.GONE
-            binding.infoLayout.timeLayout.visibility = View.VISIBLE
+                        binding.infoLayout.apsModeText.visibility = View.GONE
+                    }
+
+                    (loop as PluginBase).isEnabled() && closedLoopEnabled.value() && loop.isLGS -> {
+                        binding.infoLayout.apsMode.setImageResource(R.drawable.ic_loop_lgs)
+                        apsModeSetA11yLabel(R.string.uel_lgs_loop_mode)
+                        binding.infoLayout.apsModeText.visibility = View.GONE
+                    }
+
+                    (loop as PluginBase).isEnabled() && closedLoopEnabled.value()               -> {
+                        binding.infoLayout.apsMode.setImageResource(R.drawable.ic_loop_closed)
+                        apsModeSetA11yLabel(R.string.closedloop)
+                        binding.infoLayout.apsModeText.visibility = View.GONE
+                    }
+
+                    (loop as PluginBase).isEnabled() && !closedLoopEnabled.value()              -> {
+                        binding.infoLayout.apsMode.setImageResource(R.drawable.ic_loop_open)
+                        apsModeSetA11yLabel(R.string.openloop)
+                        binding.infoLayout.apsModeText.visibility = View.GONE
+                    }
+
+                    else                                                                        -> {
+                        binding.infoLayout.apsMode.setImageResource(R.drawable.ic_loop_disabled)
+                        apsModeSetA11yLabel(R.string.disabled_loop)
+                        binding.infoLayout.apsModeText.visibility = View.GONE
+                    }
+                }
+            } else {
+                //nsclient
+                binding.infoLayout.apsMode.visibility = View.GONE
+                binding.infoLayout.apsModeText.visibility = View.GONE
+                binding.infoLayout.timeLayout.visibility = View.VISIBLE
+            }
+
+            // pump status from ns
+            binding.pump.text = processedDeviceStatusData.pumpStatus(nsSettingsStatus)
+            binding.pump.setOnClickListener { activity?.let { OKDialog.show(it, rh.gs(R.string.pump), processedDeviceStatusData.extendedPumpStatus) } }
+
+            // OpenAPS status from ns
+            binding.openaps.text = processedDeviceStatusData.openApsStatus
+            binding.openaps.setOnClickListener { activity?.let { OKDialog.show(it, rh.gs(R.string.openaps), processedDeviceStatusData.extendedOpenApsStatus) } }
+
+            // Uploader status from ns
+            binding.uploader.text = processedDeviceStatusData.uploaderStatusSpanned
+            binding.uploader.setOnClickListener { activity?.let { OKDialog.show(it, rh.gs(R.string.uploader), processedDeviceStatusData.extendedUploaderStatus) } }
         }
-
-        // pump status from ns
-        binding.pump.text = nsDeviceStatus.pumpStatus
-        binding.pump.setOnClickListener { activity?.let { OKDialog.show(it, rh.gs(R.string.pump), nsDeviceStatus.extendedPumpStatus) } }
-
-        // OpenAPS status from ns
-        binding.openaps.text = nsDeviceStatus.openApsStatus
-        binding.openaps.setOnClickListener { activity?.let { OKDialog.show(it, rh.gs(R.string.openaps), nsDeviceStatus.extendedOpenApsStatus) } }
-
-        // Uploader status from ns
-        binding.uploader.text = nsDeviceStatus.uploaderStatusSpanned
-        binding.uploader.setOnClickListener { activity?.let { OKDialog.show(it, rh.gs(R.string.uploader), nsDeviceStatus.extendedUploaderStatus) } }
     }
 
     private fun prepareGraphsIfNeeded(numOfGraphs: Int) {
@@ -761,59 +795,67 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
 
     @SuppressLint("SetTextI18n")
     fun updateBg() {
-        _binding ?: return
         val units = profileFunction.getUnits()
-        binding.infoLayout.bg.text = overviewData.lastBg?.valueToUnitsString(units)
-            ?: rh.gs(R.string.notavailable)
-        binding.infoLayout.bg.setTextColor(overviewData.lastBgColor(context))
-        binding.infoLayout.arrow.setImageResource(trendCalculator.getTrendArrow(overviewData.lastBg).directionToIcon())
-        binding.infoLayout.arrow.setColorFilter(overviewData.lastBgColor(context))
-        binding.infoLayout.arrow.contentDescription = overviewData.lastBgDescription + " " + rh.gs(R.string.and) + " " + trendCalculator.getTrendDescription(overviewData.lastBg)
-
+        val lastBg = overviewData.lastBg
+        val lastBgColor = overviewData.lastBgColor(context)
+        val isActualBg = overviewData.isActualBg
         val glucoseStatus = glucoseStatusProvider.glucoseStatusData
-        if (glucoseStatus != null) {
-            binding.infoLayout.deltaLarge.text = Profile.toSignedUnitsString(glucoseStatus.delta, glucoseStatus.delta * Constants.MGDL_TO_MMOLL, units)
-            binding.infoLayout.deltaLarge.setTextColor(overviewData.lastBgColor(context))
-            binding.infoLayout.delta.text = Profile.toSignedUnitsString(glucoseStatus.delta, glucoseStatus.delta * Constants.MGDL_TO_MMOLL, units)
-            binding.infoLayout.avgDelta.text = Profile.toSignedUnitsString(glucoseStatus.shortAvgDelta, glucoseStatus.shortAvgDelta * Constants.MGDL_TO_MMOLL, units)
-            binding.infoLayout.longAvgDelta.text = Profile.toSignedUnitsString(glucoseStatus.longAvgDelta, glucoseStatus.longAvgDelta * Constants.MGDL_TO_MMOLL, units)
-        } else {
-            binding.infoLayout.deltaLarge.text = ""
-            binding.infoLayout.delta.text = "Δ " + rh.gs(R.string.notavailable)
-            binding.infoLayout.avgDelta.text = ""
-            binding.infoLayout.longAvgDelta.text = ""
-        }
+        val trendDescription = trendCalculator.getTrendDescription(lastBg)
+        val trendArrow = trendCalculator.getTrendArrow(lastBg)
+        val lastBgDescription = overviewData.lastBgDescription
+        runOnUiThread {
+            _binding ?: return@runOnUiThread
+            binding.infoLayout.bg.text = lastBg?.valueToUnitsString(units)
+                ?: rh.gs(R.string.value_unavailable_short)
+            binding.infoLayout.bg.setTextColor(lastBgColor)
+            binding.infoLayout.arrow.setImageResource(trendArrow.directionToIcon())
+            binding.infoLayout.arrow.setColorFilter(lastBgColor)
+            binding.infoLayout.arrow.contentDescription = lastBgDescription + " " + rh.gs(R.string.and) + " " + trendDescription
 
-        // strike through if BG is old
-        binding.infoLayout.bg.paintFlags =
-            if (!overviewData.isActualBg) binding.infoLayout.bg.paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
-            else binding.infoLayout.bg.paintFlags and Paint.STRIKE_THRU_TEXT_FLAG.inv()
-
-        val outDate = (if (!overviewData.isActualBg) rh.gs(R.string.a11y_bg_outdated) else "")
-        binding.infoLayout.bg.contentDescription =
-            rh.gs(R.string.a11y_blood_glucose) + " " + binding.infoLayout.bg.text.toString() + " " + overviewData.lastBgDescription + " " + outDate
-
-        binding.infoLayout.timeAgo.text = dateUtil.minAgo(rh, overviewData.lastBg?.timestamp)
-        binding.infoLayout.timeAgo.contentDescription = dateUtil.minAgoLong(rh, overviewData.lastBg?.timestamp)
-        binding.infoLayout.timeAgoShort.text = "(" + dateUtil.minAgoShort(overviewData.lastBg?.timestamp) + ")"
-
-        val qualityIcon = bgQualityCheckPlugin.icon()
-        if (qualityIcon != 0) {
-            binding.infoLayout.bgQuality.visibility = View.VISIBLE
-            binding.infoLayout.bgQuality.setImageResource(qualityIcon)
-            binding.infoLayout.bgQuality.contentDescription = rh.gs(R.string.a11y_bg_quality) + " " + bgQualityCheckPlugin.stateDescription()
-            binding.infoLayout.bgQuality.setOnClickListener {
-                context?.let { context -> OKDialog.show(context, rh.gs(R.string.data_status), bgQualityCheckPlugin.message) }
+            if (glucoseStatus != null) {
+                binding.infoLayout.deltaLarge.text = Profile.toSignedUnitsString(glucoseStatus.delta, glucoseStatus.delta * Constants.MGDL_TO_MMOLL, units)
+                binding.infoLayout.deltaLarge.setTextColor(lastBgColor)
+                binding.infoLayout.delta.text = Profile.toSignedUnitsString(glucoseStatus.delta, glucoseStatus.delta * Constants.MGDL_TO_MMOLL, units)
+                binding.infoLayout.avgDelta.text = Profile.toSignedUnitsString(glucoseStatus.shortAvgDelta, glucoseStatus.shortAvgDelta * Constants.MGDL_TO_MMOLL, units)
+                binding.infoLayout.longAvgDelta.text = Profile.toSignedUnitsString(glucoseStatus.longAvgDelta, glucoseStatus.longAvgDelta * Constants.MGDL_TO_MMOLL, units)
+            } else {
+                binding.infoLayout.deltaLarge.text = ""
+                binding.infoLayout.delta.text = "Δ " + rh.gs(R.string.value_unavailable_short)
+                binding.infoLayout.avgDelta.text = ""
+                binding.infoLayout.longAvgDelta.text = ""
             }
-        } else {
-            binding.infoLayout.bgQuality.visibility = View.GONE
+
+            // strike through if BG is old
+            binding.infoLayout.bg.paintFlags =
+                if (!isActualBg) binding.infoLayout.bg.paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
+                else binding.infoLayout.bg.paintFlags and Paint.STRIKE_THRU_TEXT_FLAG.inv()
+
+            val outDate = (if (!isActualBg) rh.gs(R.string.a11y_bg_outdated) else "")
+            binding.infoLayout.bg.contentDescription = rh.gs(R.string.a11y_blood_glucose) + " " + binding.infoLayout.bg.text.toString() + " " + lastBgDescription + " " + outDate
+
+            binding.infoLayout.timeAgo.text = dateUtil.minAgo(rh, lastBg?.timestamp)
+            binding.infoLayout.timeAgo.contentDescription = dateUtil.minAgoLong(rh, lastBg?.timestamp)
+            binding.infoLayout.timeAgoShort.text = "(" + dateUtil.minAgoShort(lastBg?.timestamp) + ")"
+
+            val qualityIcon = bgQualityCheckPlugin.icon()
+            if (qualityIcon != 0) {
+                binding.infoLayout.bgQuality.visibility = View.VISIBLE
+                binding.infoLayout.bgQuality.setImageResource(qualityIcon)
+                binding.infoLayout.bgQuality.contentDescription = rh.gs(R.string.a11y_bg_quality) + " " + bgQualityCheckPlugin.stateDescription()
+                binding.infoLayout.bgQuality.setOnClickListener {
+                    context?.let { context -> OKDialog.show(context, rh.gs(R.string.data_status), bgQualityCheckPlugin.message) }
+                }
+            } else {
+                binding.infoLayout.bgQuality.visibility = View.GONE
+            }
         }
     }
 
-    fun updateProfile() {
-        _binding ?: return
-        val profileBackgroundColor =
-            profileFunction.getProfile()?.let {
+    private fun updateProfile() {
+        val profile = profileFunction.getProfile()
+        runOnUiThread {
+            _binding ?: return@runOnUiThread
+            val profileBackgroundColor = profile?.let {
                 if (it is ProfileSealed.EPS) {
                     if (it.value.originalPercentage != 100 || it.value.originalTimeshift != 0L || it.value.originalDuration != 0L)
                         R.attr.ribbonWarningColor
@@ -825,8 +867,7 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
                 }
             } ?: R.attr.ribbonCriticalColor
 
-        val profileTextColor =
-            profileFunction.getProfile()?.let {
+            val profileTextColor = profile?.let {
                 if (it is ProfileSealed.EPS) {
                     if (it.value.originalPercentage != 100 || it.value.originalTimeshift != 0L || it.value.originalDuration != 0L)
                         R.attr.ribbonTextWarningColor
@@ -837,30 +878,38 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
                     R.attr.ribbonTextDefaultColor
                 }
             } ?: R.attr.ribbonTextDefaultColor
-        setRibbon(binding.activeProfile, profileTextColor, profileBackgroundColor, profileFunction.getProfileNameWithRemainingTime())
+            setRibbon(binding.activeProfile, profileTextColor, profileBackgroundColor, profileFunction.getProfileNameWithRemainingTime())
+        }
     }
 
     private fun updateTemporaryBasal() {
-        _binding ?: return
-        binding.infoLayout.baseBasal.text = overviewData.temporaryBasalText(iobCobCalculator)
-        binding.infoLayout.baseBasal.setTextColor(overviewData.temporaryBasalColor(context, iobCobCalculator))
-        binding.infoLayout.baseBasalIcon.setImageResource(overviewData.temporaryBasalIcon(iobCobCalculator))
-        binding.infoLayout.basalLayout.setOnClickListener {
-            activity?.let { OKDialog.show(it, rh.gs(R.string.basal), overviewData.temporaryBasalDialogText(iobCobCalculator)) }
+        val temporaryBasalText = overviewData.temporaryBasalText(iobCobCalculator)
+        val temporaryBasalColor = overviewData.temporaryBasalColor(context, iobCobCalculator)
+        val temporaryBasalIcon = overviewData.temporaryBasalIcon(iobCobCalculator)
+        val temporaryBasalDialogText = overviewData.temporaryBasalDialogText(iobCobCalculator)
+        runOnUiThread {
+            _binding ?: return@runOnUiThread
+            binding.infoLayout.baseBasal.text = temporaryBasalText
+            binding.infoLayout.baseBasal.setTextColor(temporaryBasalColor)
+            binding.infoLayout.baseBasalIcon.setImageResource(temporaryBasalIcon)
+            binding.infoLayout.basalLayout.setOnClickListener { activity?.let { OKDialog.show(it, rh.gs(R.string.basal), temporaryBasalDialogText) } }
         }
     }
 
     private fun updateExtendedBolus() {
-        _binding ?: return
         val pump = activePlugin.activePump
-        binding.infoLayout.extendedBolus.text = overviewData.extendedBolusText(iobCobCalculator)
-        binding.infoLayout.extendedLayout.setOnClickListener {
-            activity?.let { OKDialog.show(it, rh.gs(R.string.extended_bolus), overviewData.extendedBolusDialogText(iobCobCalculator)) }
+        val extendedBolus = iobCobCalculator.getExtendedBolus(dateUtil.now())
+        val extendedBolusText = overviewData.extendedBolusText(iobCobCalculator)
+        val extendedBolusDialogText = overviewData.extendedBolusDialogText(iobCobCalculator)
+        runOnUiThread {
+            _binding ?: return@runOnUiThread
+            binding.infoLayout.extendedBolus.text = extendedBolusText
+            binding.infoLayout.extendedLayout.setOnClickListener { activity?.let { OKDialog.show(it, rh.gs(R.string.extended_bolus), extendedBolusDialogText) } }
+            binding.infoLayout.extendedLayout.visibility = (extendedBolus != null && !pump.isFakingTempsByExtendedBoluses).toVisibility()
         }
-        binding.infoLayout.extendedLayout.visibility = (iobCobCalculator.getExtendedBolus(dateUtil.now()) != null && !pump.isFakingTempsByExtendedBoluses).toVisibility()
     }
 
-    fun updateTime() {
+    private fun updateTime() {
         _binding ?: return
         binding.infoLayout.time.text = dateUtil.timeString(dateUtil.now())
         // Status lights
@@ -888,69 +937,73 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
             binding.statusLightsLayout.pbAge,
             binding.statusLightsLayout.batteryLevel
         )
-        processButtonsVisibility()
-        processAps()
     }
 
-    fun updateIobCob() {
-        _binding ?: return
-        binding.infoLayout.iob.text = overviewData.iobText(iobCobCalculator)
-        binding.infoLayout.iobLayout.setOnClickListener {
-            activity?.let { OKDialog.show(it, rh.gs(R.string.iob), overviewData.iobDialogText(iobCobCalculator)) }
-        }
-        // cob
-        var cobText = overviewData.cobInfo(iobCobCalculator).displayText(rh, dateUtil, buildHelper.isEngineeringMode()) ?: rh.gs(R.string.value_unavailable_short)
+    private fun updateIobCob() {
+        val iobText = overviewData.iobText(iobCobCalculator)
+        val iobDialogText = overviewData.iobDialogText(iobCobCalculator)
+        val displayText = overviewData.cobInfo(iobCobCalculator).displayText(rh, dateUtil, buildHelper.isEngineeringMode())
+        val lastCarbsTime = overviewData.lastCarbsTime
+        runOnUiThread {
+            _binding ?: return@runOnUiThread
+            binding.infoLayout.iob.text = iobText
+            binding.infoLayout.iobLayout.setOnClickListener { activity?.let { OKDialog.show(it, rh.gs(R.string.iob), iobDialogText) } }
+            // cob
+            var cobText = displayText ?: rh.gs(R.string.value_unavailable_short)
 
-        val constraintsProcessed = loop.lastRun?.constraintsProcessed
-        val lastRun = loop.lastRun
-        if (config.APS && constraintsProcessed != null && lastRun != null) {
-            if (constraintsProcessed.carbsReq > 0) {
-                //only display carbsreq when carbs have not been entered recently
-                if (overviewData.lastCarbsTime < lastRun.lastAPSRun) {
-                    cobText += " | " + constraintsProcessed.carbsReq + " " + rh.gs(R.string.required)
+            val constraintsProcessed = loop.lastRun?.constraintsProcessed
+            val lastRun = loop.lastRun
+            if (config.APS && constraintsProcessed != null && lastRun != null) {
+                if (constraintsProcessed.carbsReq > 0) {
+                    //only display carbsreq when carbs have not been entered recently
+                    if (lastCarbsTime < lastRun.lastAPSRun) {
+                        cobText += " | " + constraintsProcessed.carbsReq + " " + rh.gs(R.string.required)
+                    }
+                    if (carbAnimation?.isRunning == false)
+                        carbAnimation?.start()
+                } else {
+                    carbAnimation?.stop()
+                    carbAnimation?.selectDrawable(0)
                 }
-                if (carbAnimation?.isRunning == false)
-                    carbAnimation?.start()
-            } else {
-                carbAnimation?.stop()
-                carbAnimation?.selectDrawable(0)
             }
+            binding.infoLayout.cob.text = cobText
         }
-        binding.infoLayout.cob.text = cobText
     }
 
     @SuppressLint("SetTextI18n")
     fun updateTemporaryTarget() {
-        _binding ?: return
         val units = profileFunction.getUnits()
         val tempTarget = overviewData.temporaryTarget
-        if (tempTarget != null) {
-            setRibbon(
-                binding.tempTarget,
-                R.attr.ribbonTextWarningColor,
-                R.attr.ribbonWarningColor,
-                Profile.toTargetRangeString(tempTarget.lowTarget, tempTarget.highTarget, GlucoseUnit.MGDL, units) + " " + dateUtil.untilString(tempTarget.end, rh)
-            )
-        } else {
-            // If the target is not the same as set in the profile then oref has overridden it
-            profileFunction.getProfile()?.let { profile ->
-                val targetUsed = loop.lastRun?.constraintsProcessed?.targetBG ?: 0.0
+        runOnUiThread {
+            _binding ?: return@runOnUiThread
+            if (tempTarget != null) {
+                setRibbon(
+                    binding.tempTarget,
+                    R.attr.ribbonTextWarningColor,
+                    R.attr.ribbonWarningColor,
+                    Profile.toTargetRangeString(tempTarget.lowTarget, tempTarget.highTarget, GlucoseUnit.MGDL, units) + " " + dateUtil.untilString(tempTarget.end, rh)
+                )
+            } else {
+                // If the target is not the same as set in the profile then oref has overridden it
+                profileFunction.getProfile()?.let { profile ->
+                    val targetUsed = loop.lastRun?.constraintsProcessed?.targetBG ?: 0.0
 
-                if (targetUsed != 0.0 && abs(profile.getTargetMgdl() - targetUsed) > 0.01) {
-                    aapsLogger.debug("Adjusted target. Profile: ${profile.getTargetMgdl()} APS: $targetUsed")
-                    setRibbon(
-                        binding.tempTarget,
-                        R.attr.ribbonTextWarningColor,
-                        R.attr.tempTargetBackgroundColor,
-                        Profile.toTargetRangeString(targetUsed, targetUsed, GlucoseUnit.MGDL, units)
-                    )
-                } else {
-                    setRibbon(
-                        binding.tempTarget,
-                        R.attr.ribbonTextDefaultColor,
-                        R.attr.ribbonDefaultColor,
-                        Profile.toTargetRangeString(profile.getTargetLowMgdl(), profile.getTargetHighMgdl(), GlucoseUnit.MGDL, units)
-                    )
+                    if (targetUsed != 0.0 && abs(profile.getTargetMgdl() - targetUsed) > 0.01) {
+                        aapsLogger.debug("Adjusted target. Profile: ${profile.getTargetMgdl()} APS: $targetUsed")
+                        setRibbon(
+                            binding.tempTarget,
+                            R.attr.ribbonTextWarningColor,
+                            R.attr.tempTargetBackgroundColor,
+                            Profile.toTargetRangeString(targetUsed, targetUsed, GlucoseUnit.MGDL, units)
+                        )
+                    } else {
+                        setRibbon(
+                            binding.tempTarget,
+                            R.attr.ribbonTextDefaultColor,
+                            R.attr.ribbonDefaultColor,
+                            Profile.toTargetRangeString(profile.getTargetLowMgdl(), profile.getTargetHighMgdl(), GlucoseUnit.MGDL, units)
+                        )
+                    }
                 }
             }
         }
@@ -970,10 +1023,12 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
         val pump = activePlugin.activePump
         val graphData = GraphData(injector, binding.graphsLayout.bgGraph, overviewData)
         val menuChartSettings = overviewMenus.setting
+        if (menuChartSettings.isEmpty()) return
         graphData.addInRangeArea(overviewData.fromTime, overviewData.endTime, defaultValueHelper.determineLowLine(), defaultValueHelper.determineHighLine())
-        graphData.addBgReadings(menuChartSettings[0][OverviewMenus.CharType.PRE.ordinal])
+        graphData.addBgReadings(menuChartSettings[0][OverviewMenus.CharType.PRE.ordinal], context)
         if (buildHelper.isDev()) graphData.addBucketedData()
-        graphData.addTreatments()
+        graphData.addTreatments(context)
+        graphData.addEps(context, 0.95)
         if (menuChartSettings[0][OverviewMenus.CharType.TREAT.ordinal])
             graphData.addTherapyEvents()
         if (menuChartSettings[0][OverviewMenus.CharType.ACT.ordinal])
@@ -1054,7 +1109,7 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
 
     private fun updateSensitivity() {
         _binding ?: return
-        if (sp.getBoolean(R.string.key_openapsama_useautosens, false) && constraintChecker.isAutosensModeEnabled().value()) {
+        if (constraintChecker.isAutosensModeEnabled().value() || !(config.NSCLIENT && overviewData.lastAutosensData(iobCobCalculator) == null)) {
             binding.infoLayout.sensitivityIcon.setImageResource(R.drawable.ic_swap_vert_black_48dp_green)
         } else {
             binding.infoLayout.sensitivityIcon.setImageResource(R.drawable.ic_x_swap_vert)
@@ -1064,6 +1119,24 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
             overviewData.lastAutosensData(iobCobCalculator)?.let { autosensData ->
                 String.format(Locale.ENGLISH, "%.0f%%", autosensData.autosensResult.ratio * 100)
             } ?: ""
+        // Show variable sensitivity
+        val profile = profileFunction.getProfile()
+        val request = loop.lastRun?.request
+        val isfMgdl = profile?.getIsfMgdl()
+        val variableSens =
+            if (config.APS && request is DetermineBasalResultSMB) request.variableSens ?: 0.0
+            else if (config.NSCLIENT) JsonHelper.safeGetDouble(processedDeviceStatusData.getAPSResult(injector).json, "variable_sens")
+            else 0.0
+
+        if (variableSens != isfMgdl && variableSens != 0.0 && isfMgdl != null) {
+            binding.infoLayout.variableSensitivity.text =
+                String.format(
+                    Locale.getDefault(), "%1$.1f→%2$.1f",
+                    Profile.toUnits(isfMgdl, isfMgdl * Constants.MGDL_TO_MMOLL, profileFunction.getUnits()),
+                    Profile.toUnits(variableSens, variableSens * Constants.MGDL_TO_MMOLL, profileFunction.getUnits())
+                )
+            binding.infoLayout.variableSensitivity.visibility = View.VISIBLE
+        } else binding.infoLayout.variableSensitivity.visibility = View.GONE
     }
 
     private fun updatePumpStatus() {
