@@ -12,10 +12,9 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import dagger.android.HasAndroidInjector;
-import info.nightscout.androidaps.dana.DanaPump;
+import info.nightscout.androidaps.annotations.OpenForTesting;
 import info.nightscout.androidaps.danar.services.DanaRExecutionService;
-import info.nightscout.androidaps.data.PumpEnactResultObject;
-import info.nightscout.core.fabric.FabricPrivacy;
+import info.nightscout.core.utils.fabric.FabricPrivacy;
 import info.nightscout.interfaces.constraints.Constraint;
 import info.nightscout.interfaces.constraints.Constraints;
 import info.nightscout.interfaces.plugin.ActivePlugin;
@@ -25,7 +24,10 @@ import info.nightscout.interfaces.pump.PumpEnactResult;
 import info.nightscout.interfaces.pump.PumpSync;
 import info.nightscout.interfaces.pump.defs.PumpType;
 import info.nightscout.interfaces.queue.CommandQueue;
+import info.nightscout.interfaces.ui.UiInteraction;
 import info.nightscout.interfaces.utils.Round;
+import info.nightscout.pump.dana.DanaPump;
+import info.nightscout.pump.dana.database.DanaHistoryDatabase;
 import info.nightscout.rx.AapsSchedulers;
 import info.nightscout.rx.bus.RxBus;
 import info.nightscout.rx.events.EventAppExit;
@@ -39,6 +41,7 @@ import info.nightscout.shared.utils.DateUtil;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 
 @Singleton
+@OpenForTesting
 public class DanaRPlugin extends AbstractDanaRPlugin {
     private final CompositeDisposable disposable = new CompositeDisposable();
 
@@ -63,16 +66,18 @@ public class DanaRPlugin extends AbstractDanaRPlugin {
             DanaPump danaPump,
             DateUtil dateUtil,
             FabricPrivacy fabricPrivacy,
-            PumpSync pumpSync
+            PumpSync pumpSync,
+            UiInteraction uiInteraction,
+            DanaHistoryDatabase danaHistoryDatabase
     ) {
-        super(injector, danaPump, rh, constraints, aapsLogger, aapsSchedulers, commandQueue, rxBus, activePlugin, sp, dateUtil, pumpSync);
+        super(injector, danaPump, rh, constraints, aapsLogger, aapsSchedulers, commandQueue, rxBus, activePlugin, sp, dateUtil, pumpSync, uiInteraction, danaHistoryDatabase);
         this.aapsLogger = aapsLogger;
         this.context = context;
         this.rh = rh;
         this.constraints = constraints;
         this.fabricPrivacy = fabricPrivacy;
 
-        useExtendedBoluses = sp.getBoolean(R.string.key_danar_useextended, false);
+        useExtendedBoluses = sp.getBoolean(info.nightscout.core.utils.R.string.key_danar_useextended, false);
         pumpDescription.fillFor(PumpType.DANA_R);
     }
 
@@ -86,7 +91,7 @@ public class DanaRPlugin extends AbstractDanaRPlugin {
                 .subscribe(event -> {
                     if (isEnabled()) {
                         boolean previousValue = useExtendedBoluses;
-                        useExtendedBoluses = sp.getBoolean(R.string.key_danar_useextended, false);
+                        useExtendedBoluses = sp.getBoolean(info.nightscout.core.utils.R.string.key_danar_useextended, false);
 
                         if (useExtendedBoluses != previousValue && pumpSync.expectedPumpState().getExtendedBolus() != null) {
                             sExecutionService.extendedBolusStop();
@@ -128,7 +133,7 @@ public class DanaRPlugin extends AbstractDanaRPlugin {
     @NonNull
     @Override
     public String getName() {
-        return rh.gs(R.string.danarpump);
+        return rh.gs(info.nightscout.pump.dana.R.string.danarpump);
     }
 
     @Override
@@ -165,14 +170,13 @@ public class DanaRPlugin extends AbstractDanaRPlugin {
             boolean connectionOK = false;
             if (detailedBolusInfo.insulin > 0 || detailedBolusInfo.carbs > 0)
                 connectionOK = sExecutionService.bolus(detailedBolusInfo.insulin, (int) detailedBolusInfo.carbs, detailedBolusInfo.getCarbsTimestamp() != null ? detailedBolusInfo.getCarbsTimestamp() : detailedBolusInfo.timestamp, t);
-            PumpEnactResult result = new PumpEnactResultObject(getInjector());
+            PumpEnactResult result = new PumpEnactResult(getInjector());
             result.success(connectionOK && Math.abs(detailedBolusInfo.insulin - t.getInsulin()) < pumpDescription.getBolusStep())
-                    .bolusDelivered(t.getInsulin())
-                    .carbsDelivered(detailedBolusInfo.carbs);
+                    .bolusDelivered(t.getInsulin());
             if (!result.getSuccess())
-                result.comment(rh.gs(R.string.boluserrorcode, detailedBolusInfo.insulin, t.getInsulin(), danaPump.getBolusStartErrorCode()));
+                result.comment(rh.gs(info.nightscout.pump.dana.R.string.boluserrorcode, detailedBolusInfo.insulin, t.getInsulin(), danaPump.getBolusStartErrorCode()));
             else
-                result.comment(R.string.ok);
+                result.comment(info.nightscout.core.ui.R.string.ok);
             aapsLogger.debug(LTag.PUMP, "deliverTreatment: OK. Asked: " + detailedBolusInfo.insulin + " Delivered: " + result.getBolusDelivered());
             detailedBolusInfo.insulin = t.getInsulin();
             detailedBolusInfo.timestamp = System.currentTimeMillis();
@@ -193,8 +197,8 @@ public class DanaRPlugin extends AbstractDanaRPlugin {
                         serialNumber());
             return result;
         } else {
-            PumpEnactResult result = new PumpEnactResultObject(getInjector());
-            result.success(false).bolusDelivered(0d).carbsDelivered(0d).comment(R.string.invalidinput);
+            PumpEnactResult result = new PumpEnactResult(getInjector());
+            result.success(false).bolusDelivered(0d).comment(info.nightscout.core.ui.R.string.invalid_input);
             aapsLogger.error("deliverTreatment: Invalid input");
             return result;
         }
@@ -205,7 +209,7 @@ public class DanaRPlugin extends AbstractDanaRPlugin {
     public PumpEnactResult setTempBasalAbsolute(double absoluteRate, int durationInMinutes, @NonNull Profile profile, boolean enforceNew, @NonNull PumpSync.TemporaryBasalType tbrType) {
         // Recheck pump status if older than 30 min
         //This should not be needed while using queue because connection should be done before calling this
-        PumpEnactResult result = new PumpEnactResultObject(getInjector());
+        PumpEnactResult result = new PumpEnactResult(getInjector());
 
         absoluteRate = constraints.applyBasalConstraints(new Constraint<>(absoluteRate), profile).value();
 
@@ -327,8 +331,8 @@ public class DanaRPlugin extends AbstractDanaRPlugin {
         if (danaPump.isExtendedInProgress() && useExtendedBoluses) {
             return cancelExtendedBolus();
         }
-        PumpEnactResult result = new PumpEnactResultObject(getInjector());
-        result.success(true).enacted(false).comment(R.string.ok).isTempCancel(true);
+        PumpEnactResult result = new PumpEnactResult(getInjector());
+        result.success(true).enacted(false).comment(info.nightscout.core.ui.R.string.ok).isTempCancel(true);
         return result;
     }
 
@@ -338,7 +342,7 @@ public class DanaRPlugin extends AbstractDanaRPlugin {
     }
 
     private PumpEnactResult cancelRealTempBasal() {
-        PumpEnactResult result = new PumpEnactResultObject(getInjector());
+        PumpEnactResult result = new PumpEnactResult(getInjector());
         if (danaPump.isTempBasalInProgress()) {
             sExecutionService.tempBasalStop();
             if (!danaPump.isTempBasalInProgress()) {
@@ -348,11 +352,11 @@ public class DanaRPlugin extends AbstractDanaRPlugin {
                         getPumpDescription().getPumpType(),
                         serialNumber()
                 );
-                result.success(true).enacted(true).isTempCancel(true);
+                result.success(true).enacted(true).isTempCancel(true).comment(info.nightscout.core.ui.R.string.ok);
             } else
-                result.success(false).enacted(false).isTempCancel(true);
+                result.success(false).enacted(false).isTempCancel(true).comment(info.nightscout.core.ui.R.string.canceling_eb_failed);
         } else {
-            result.success(true).isTempCancel(true).comment(R.string.ok);
+            result.success(true).isTempCancel(true).comment(info.nightscout.core.ui.R.string.ok);
             aapsLogger.debug(LTag.PUMP, "cancelRealTempBasal: OK");
         }
         return result;
@@ -360,7 +364,7 @@ public class DanaRPlugin extends AbstractDanaRPlugin {
 
     @NonNull @Override
     public PumpEnactResult loadEvents() {
-        return new PumpEnactResultObject(getInjector()); // no history, not needed
+        return new PumpEnactResult(getInjector()); // no history, not needed
     }
 
     @NonNull @Override

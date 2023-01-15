@@ -1,5 +1,7 @@
 package info.nightscout.database.impl
 
+import info.nightscout.database.ValueWrapper
+import info.nightscout.database.annotations.DbOpenForTesting
 import info.nightscout.database.entities.Bolus
 import info.nightscout.database.entities.BolusCalculatorResult
 import info.nightscout.database.entities.Carbs
@@ -31,7 +33,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.roundToInt
 
-@info.nightscout.database.annotations.DbOpenForTesting
+@DbOpenForTesting
 @Singleton class AppRepository @Inject internal constructor(
     internal val database: AppDatabase
 ) {
@@ -125,7 +127,7 @@ import kotlin.math.roundToInt
         return ret.toString()
     }
 
-    fun clearCachedData(from: Long) {
+    fun clearCachedTddData(from: Long) {
         database.totalDailyDoseDao.deleteNewerThan(from, InterfaceIDs.PumpType.CACHE)
     }
 
@@ -861,7 +863,7 @@ import kotlin.math.roundToInt
             .subscribeOn(Schedulers.io())
             .toWrappedSingle()
 
-    fun createTotalDailyDose(tdd: TotalDailyDose) {
+    fun insertTotalDailyDose(tdd: TotalDailyDose) {
         database.totalDailyDoseDao.insert(tdd)
     }
 
@@ -948,7 +950,3 @@ inline fun <reified T : Any> Maybe<T>.toWrappedSingle(): Single<ValueWrapper<T>>
         .switchIfEmpty(Maybe.just(ValueWrapper.Absent()))
         .toSingle()
 
-sealed class ValueWrapper<T> {
-    data class Existing<T>(val value: T) : ValueWrapper<T>()
-    class Absent<T> : ValueWrapper<T>()
-}

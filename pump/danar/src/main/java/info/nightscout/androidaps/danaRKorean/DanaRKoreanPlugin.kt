@@ -6,12 +6,11 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
 import dagger.android.HasAndroidInjector
-import info.nightscout.androidaps.dana.DanaPump
+import info.nightscout.androidaps.annotations.OpenForTesting
 import info.nightscout.androidaps.danaRKorean.services.DanaRKoreanExecutionService
 import info.nightscout.androidaps.danar.AbstractDanaRPlugin
 import info.nightscout.androidaps.danar.R
-import info.nightscout.androidaps.data.PumpEnactResultObject
-import info.nightscout.core.fabric.FabricPrivacy
+import info.nightscout.core.utils.fabric.FabricPrivacy
 import info.nightscout.interfaces.constraints.Constraint
 import info.nightscout.interfaces.constraints.Constraints
 import info.nightscout.interfaces.plugin.ActivePlugin
@@ -22,7 +21,10 @@ import info.nightscout.interfaces.pump.PumpSync
 import info.nightscout.interfaces.pump.PumpSync.TemporaryBasalType
 import info.nightscout.interfaces.pump.defs.PumpType
 import info.nightscout.interfaces.queue.CommandQueue
+import info.nightscout.interfaces.ui.UiInteraction
 import info.nightscout.interfaces.utils.Round
+import info.nightscout.pump.dana.DanaPump
+import info.nightscout.pump.dana.database.DanaHistoryDatabase
 import info.nightscout.rx.AapsSchedulers
 import info.nightscout.rx.bus.RxBus
 import info.nightscout.rx.events.EventAppExit
@@ -40,6 +42,7 @@ import kotlin.math.abs
 import kotlin.math.max
 
 @Singleton
+@OpenForTesting
 class DanaRKoreanPlugin @Inject constructor(
     injector: HasAndroidInjector,
     aapsLogger: AAPSLogger,
@@ -54,12 +57,14 @@ class DanaRKoreanPlugin @Inject constructor(
     danaPump: DanaPump,
     dateUtil: DateUtil,
     private val fabricPrivacy: FabricPrivacy,
-    pumpSync: PumpSync
-) : AbstractDanaRPlugin(injector, danaPump, rh, constraintChecker, aapsLogger, aapsSchedulers, commandQueue, rxBus, activePlugin, sp, dateUtil, pumpSync) {
+    pumpSync: PumpSync,
+    uiInteraction: UiInteraction,
+    danaHistoryDatabase: DanaHistoryDatabase
+) : AbstractDanaRPlugin(injector, danaPump, rh, constraintChecker, aapsLogger, aapsSchedulers, commandQueue, rxBus, activePlugin, sp, dateUtil, pumpSync, uiInteraction, danaHistoryDatabase) {
 
     init {
-        pluginDescription.description(R.string.description_pump_dana_r_korean)
-        useExtendedBoluses = sp.getBoolean(R.string.key_danar_useextended, false)
+        pluginDescription.description(info.nightscout.pump.dana.R.string.description_pump_dana_r_korean)
+        useExtendedBoluses = sp.getBoolean(info.nightscout.core.utils.R.string.key_danar_useextended, false)
         pumpDescription.fillFor(PumpType.DANA_R_KOREAN)
     }
 
@@ -71,7 +76,7 @@ class DanaRKoreanPlugin @Inject constructor(
             .subscribe({
                 if (isEnabled()) {
                     val previousValue = useExtendedBoluses
-                    useExtendedBoluses = sp.getBoolean(R.string.key_danar_useextended, false)
+                    useExtendedBoluses = sp.getBoolean(info.nightscout.core.utils.R.string.key_danar_useextended, false)
                     if (useExtendedBoluses != previousValue && pumpSync.expectedPumpState().extendedBolus != null) {
                         sExecutionService.extendedBolusStop()
                     }
@@ -105,7 +110,7 @@ class DanaRKoreanPlugin @Inject constructor(
 
     // Plugin base interface
     override val name: String
-        get() = rh.gs(R.string.danarkoreanpump)
+        get() = rh.gs(info.nightscout.pump.dana.R.string.danarkoreanpump)
     override val preferencesId: Int
         get() = R.xml.pref_danarkorean
 
@@ -134,10 +139,10 @@ class DanaRKoreanPlugin @Inject constructor(
                     detailedBolusInfo.insulin, detailedBolusInfo.carbs.toInt(), detailedBolusInfo.carbsTimestamp
                         ?: detailedBolusInfo.timestamp, t
                 )
-            val result = PumpEnactResultObject(injector)
+            val result = PumpEnactResult(injector)
             result.success(connectionOK && abs(detailedBolusInfo.insulin - t.insulin) < pumpDescription.bolusStep)
                 .bolusDelivered(t.insulin)
-            if (!result.success) result.comment(rh.gs(R.string.boluserrorcode, detailedBolusInfo.insulin, t.insulin, danaPump.bolusStartErrorCode)) else result.comment(R.string.ok)
+            if (!result.success) result.comment(rh.gs(info.nightscout.pump.dana.R.string.boluserrorcode, detailedBolusInfo.insulin, t.insulin, danaPump.bolusStartErrorCode)) else result.comment(info.nightscout.core.ui.R.string.ok)
             aapsLogger.debug(LTag.PUMP, "deliverTreatment: OK. Asked: " + detailedBolusInfo.insulin + " Delivered: " + result.bolusDelivered)
             detailedBolusInfo.insulin = t.insulin
             detailedBolusInfo.timestamp = dateUtil.now()
@@ -151,8 +156,8 @@ class DanaRKoreanPlugin @Inject constructor(
             )
             result
         } else {
-            val result = PumpEnactResultObject(injector)
-            result.success(false).bolusDelivered(0.0).carbsDelivered(0.0).comment(R.string.invalidinput)
+            val result = PumpEnactResult(injector)
+            result.success(false).bolusDelivered(0.0).comment(info.nightscout.core.ui.R.string.invalid_input)
             aapsLogger.error("deliverTreatment: Invalid input")
             result
         }
@@ -191,7 +196,7 @@ class DanaRKoreanPlugin @Inject constructor(
                 return cancelRealTempBasal()
             }
             aapsLogger.debug(LTag.PUMP, "setTempBasalAbsolute: doTempOff OK")
-            return PumpEnactResultObject(injector).success(true).enacted(false).percent(100).isPercent(true).isTempCancel(true)
+            return PumpEnactResult(injector).success(true).enacted(false).percent(100).isPercent(true).isTempCancel(true)
         }
         if (doLowTemp || doHighTemp) {
             // If extended in progress
@@ -212,7 +217,7 @@ class DanaRKoreanPlugin @Inject constructor(
                         cancelTempBasal(true)
                     } else {
                         aapsLogger.debug(LTag.PUMP, "setTempBasalAbsolute: Correct temp basal already set (doLowTemp || doHighTemp)")
-                        return PumpEnactResultObject(injector).success(true).percent(percentRate).enacted(false).duration(danaPump.tempBasalRemainingMin).isPercent(true).isTempCancel(false)
+                        return PumpEnactResult(injector).success(true).percent(percentRate).enacted(false).duration(danaPump.tempBasalRemainingMin).isPercent(true).isTempCancel(false)
                     }
                 }
             }
@@ -251,7 +256,7 @@ class DanaRKoreanPlugin @Inject constructor(
             if (danaPump.isExtendedInProgress && abs(danaPump.extendedBolusAbsoluteRate - extendedRateToSet) < pumpDescription.extendedBolusStep) {
                 // correct extended already set
                 aapsLogger.debug(LTag.PUMP, "setTempBasalAbsolute: Correct extended already set")
-                return PumpEnactResultObject(injector).success(true).absolute(danaPump.extendedBolusAbsoluteRate).enacted(false).duration(danaPump.extendedBolusRemainingMinutes).isPercent(false)
+                return PumpEnactResult(injector).success(true).absolute(danaPump.extendedBolusAbsoluteRate).enacted(false).duration(danaPump.extendedBolusRemainingMinutes).isPercent(false)
                     .isTempCancel(false)
             }
 
@@ -269,7 +274,7 @@ class DanaRKoreanPlugin @Inject constructor(
         }
         // We should never end here
         aapsLogger.error("setTempBasalAbsolute: Internal error")
-        return PumpEnactResultObject(injector).success(false).comment("Internal error")
+        return PumpEnactResult(injector).success(false).comment("Internal error")
     }
 
     override fun cancelTempBasal(enforceNew: Boolean): PumpEnactResult {
@@ -277,15 +282,15 @@ class DanaRKoreanPlugin @Inject constructor(
         if (danaPump.isExtendedInProgress && useExtendedBoluses) {
             return cancelExtendedBolus()
         }
-        val result = PumpEnactResultObject(injector)
-        result.success(true).enacted(false).comment(R.string.ok).isTempCancel(true)
+        val result = PumpEnactResult(injector)
+        result.success(true).enacted(false).comment(info.nightscout.core.ui.R.string.ok).isTempCancel(true)
         return result
     }
 
     override fun model(): PumpType = PumpType.DANA_R_KOREAN
 
     private fun cancelRealTempBasal(): PumpEnactResult {
-        val result = PumpEnactResultObject(injector)
+        val result = PumpEnactResult(injector)
         if (danaPump.isTempBasalInProgress) {
             sExecutionService.tempBasalStop()
             if (!danaPump.isTempBasalInProgress) {
@@ -298,12 +303,12 @@ class DanaRKoreanPlugin @Inject constructor(
                 result.success(true).enacted(true).isTempCancel(true)
             } else result.success(false).enacted(false).isTempCancel(true)
         } else {
-            result.success(true).isTempCancel(true).comment(R.string.ok)
+            result.success(true).isTempCancel(true).comment(info.nightscout.core.ui.R.string.ok)
             aapsLogger.debug(LTag.PUMP, "cancelRealTempBasal: OK")
         }
         return result
     }
 
-    override fun loadEvents(): PumpEnactResult = PumpEnactResultObject(injector) // no history, not needed
-    override fun setUserOptions(): PumpEnactResult = PumpEnactResultObject(injector)
+    override fun loadEvents(): PumpEnactResult = PumpEnactResult(injector) // no history, not needed
+    override fun setUserOptions(): PumpEnactResult = PumpEnactResult(injector)
 }

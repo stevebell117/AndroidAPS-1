@@ -8,11 +8,12 @@ import info.nightscout.interfaces.aps.AutosensResult
 import info.nightscout.interfaces.aps.Sensitivity
 import info.nightscout.interfaces.plugin.PluginDescription
 import info.nightscout.rx.logging.AAPSLogger
+import info.nightscout.sensitivity.AbstractSensitivityPlugin
 import info.nightscout.shared.interfaces.ResourceHelper
 import info.nightscout.shared.sharedPreferences.SP
 import org.json.JSONObject
 import org.junit.Assert
-import org.junit.Test
+import org.junit.jupiter.api.Test
 import org.mockito.Mock
 
 class AbstractSensitivityPluginTest : TestBase() {
@@ -31,6 +32,8 @@ class AbstractSensitivityPluginTest : TestBase() {
             get() = Sensitivity.SensitivityType.UNKNOWN
 
         override fun maxAbsorptionHours(): Double = 8.0
+        override val isMinCarbsAbsorptionDynamic: Boolean = true
+        override val isOref1: Boolean = true
 
         override fun configuration(): JSONObject = JSONObject()
 
