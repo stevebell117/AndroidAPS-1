@@ -24,6 +24,7 @@ import android.widget.TextView
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.widget.Toolbar
 import androidx.core.view.GravityCompat
+import androidx.core.view.MenuCompat
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.tabs.TabLayoutMediator
@@ -302,7 +303,7 @@ class MainActivity : DaggerAppCompatActivityWithResult() {
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         super.onCreateOptionsMenu(menu)
-        menu.setGroupDividerEnabled(true)
+        MenuCompat.setGroupDividerEnabled(menu, true)
         this.menu = menu
         menuInflater.inflate(R.menu.menu_main, menu)
         pluginPreferencesMenuItem = menu.findItem(R.id.nav_plugin_preferences)
@@ -468,7 +469,7 @@ class MainActivity : DaggerAppCompatActivityWithResult() {
      * Check for existing PasswordReset file and
      * reset password to SN of active pump if file exists
      */
-    fun passwordResetCheck(context: Context) {
+    private fun passwordResetCheck(context: Context) {
         val passwordReset = File(fileListProvider.ensureExtraDirExists(), "PasswordReset")
         if (passwordReset.exists()) {
             val sn = activePlugin.activePump.serialNumber()
