@@ -2,7 +2,7 @@
 <resources>
     <string name="automation_short">Auto</string>
     <string name="automation">Automatizacija</string>
-    <string name="automation_description">Vartotojo nustatytos automatizavimo užduotys</string>
+    <string name="automation_description">Naudotojo nustatytos automatizavimo užduotys</string>
     <string name="automation_missing_task_name">Įveskite užduoties pavadinimą.</string>
     <string name="automation_missing_trigger">Nurodykite mažiausiai vieną sąlygą.</string>
     <string name="automation_missing_action">Nurodykite mažiausiai vieną veiksmą.</string>
@@ -92,6 +92,8 @@
     <string name="lastboluscompared">Paskutinis Bolusas prieš %1$s %2$s min</string>
     <string name="triggercoblabel">AAO</string>
     <string name="cobcompared">AAO %1$s %2$.0f</string>
+    <string name="triggerHeartRate">Pulsas</string>
+    <string name="triggerHeartRateDesc">Pulsas %1$s %2$.0f</string>
     <string name="iob_u">AIO [U]:</string>
     <string name="distance_short">Atstumas [m]:</string>
     <string name="recurringTime">Pasikartojantis laikas</string>
@@ -108,7 +110,7 @@
     <string name="preconditions">Išankstinės sąlygos:</string>
     <string name="automation_event">Automatizuotas įvykis</string>
     <string name="reorder_label">Pertvarkyti</string>
-    <string name="user_action">Vartotojo veiksmas</string>
+    <string name="user_action">Naudotojo veiksmas</string>
     <string name="remove_automation">Pašalinti automatizaciją</string>
     <string name="sort_automation">Rūšiuoti automatizacijas</string>
     <string name="remove_selected_items">Pašalinti pasirinktus elementus</string>

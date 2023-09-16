@@ -33,4 +33,6 @@
     <string name="connected">соединение установлено</string>
     <string name="disconnecting">разъединение</string>
     <string name="waiting_for_disconnection">Ожидание разъединения</string>
+    <!-- Custom Watchface -->
+    <string name="pref_show_delta">Отображать дельту</string>
 </resources>

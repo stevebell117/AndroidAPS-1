@@ -20,7 +20,6 @@ import info.nightscout.androidaps.R
 import info.nightscout.androidaps.danaRKorean.DanaRKoreanPlugin
 import info.nightscout.androidaps.danaRv2.DanaRv2Plugin
 import info.nightscout.androidaps.danar.DanaRPlugin
-import info.nightscout.plugins.sync.openhumans.OpenHumansUploaderPlugin
 import info.nightscout.androidaps.plugins.pump.eopatch.EopatchPumpPlugin
 import info.nightscout.androidaps.plugins.pump.insight.LocalInsightPlugin
 import info.nightscout.androidaps.plugins.pump.medtronic.MedtronicPumpPlugin
@@ -32,8 +31,6 @@ import info.nightscout.insulin.InsulinOrefFreePeakPlugin
 import info.nightscout.interfaces.Config
 import info.nightscout.interfaces.nsclient.NSSettingsStatus
 import info.nightscout.interfaces.plugin.PluginBase
-import info.nightscout.interfaces.profile.Profile
-import info.nightscout.interfaces.profile.ProfileFunction
 import info.nightscout.interfaces.protection.PasswordCheck
 import info.nightscout.interfaces.protection.ProtectionCheck.ProtectionType.BIOMETRIC
 import info.nightscout.interfaces.protection.ProtectionCheck.ProtectionType.CUSTOM_PASSWORD
@@ -49,11 +46,13 @@ import info.nightscout.plugins.general.smsCommunicator.SmsCommunicatorPlugin
 import info.nightscout.plugins.general.wear.WearPlugin
 import info.nightscout.plugins.sync.nsclient.NSClientPlugin
 import info.nightscout.plugins.sync.nsclientV3.NSClientV3Plugin
+import info.nightscout.plugins.sync.openhumans.OpenHumansUploaderPlugin
 import info.nightscout.plugins.sync.tidepool.TidepoolPlugin
 import info.nightscout.plugins.sync.xdrip.XdripPlugin
 import info.nightscout.pump.combo.ComboPlugin
 import info.nightscout.pump.combov2.ComboV2Plugin
 import info.nightscout.pump.diaconn.DiaconnG8Plugin
+import info.nightscout.pump.medtrum.MedtrumPlugin
 import info.nightscout.pump.virtual.VirtualPumpPlugin
 import info.nightscout.rx.bus.RxBus
 import info.nightscout.rx.events.EventPreferenceChange
@@ -62,6 +61,7 @@ import info.nightscout.sensitivity.SensitivityAAPSPlugin
 import info.nightscout.sensitivity.SensitivityOref1Plugin
 import info.nightscout.sensitivity.SensitivityWeightedAveragePlugin
 import info.nightscout.shared.SafeParse
+import info.nightscout.shared.interfaces.ProfileUtil
 import info.nightscout.shared.interfaces.ResourceHelper
 import info.nightscout.shared.sharedPreferences.SP
 import info.nightscout.source.AidexPlugin
@@ -82,7 +82,7 @@ class MyPreferenceFragment : PreferenceFragmentCompat(), OnSharedPreferenceChang
     @Inject lateinit var rxBus: RxBus
     @Inject lateinit var rh: ResourceHelper
     @Inject lateinit var sp: SP
-    @Inject lateinit var profileFunction: ProfileFunction
+    @Inject lateinit var profileUtil: ProfileUtil
     @Inject lateinit var pluginStore: PluginStore
     @Inject lateinit var config: Config
 
@@ -122,6 +122,7 @@ class MyPreferenceFragment : PreferenceFragmentCompat(), OnSharedPreferenceChang
     @Inject lateinit var wearPlugin: WearPlugin
     @Inject lateinit var maintenancePlugin: MaintenancePlugin
     @Inject lateinit var eopatchPumpPlugin: EopatchPumpPlugin
+    @Inject lateinit var medtrumPlugin: MedtrumPlugin
 
     @Inject lateinit var passwordCheck: PasswordCheck
     @Inject lateinit var nsSettingStatus: NSSettingsStatus
@@ -212,6 +213,7 @@ class MyPreferenceFragment : PreferenceFragmentCompat(), OnSharedPreferenceChang
             addPreferencesFromResourceIfEnabled(medtronicPumpPlugin, rootKey, config.PUMPDRIVERS)
             addPreferencesFromResourceIfEnabled(diaconnG8Plugin, rootKey, config.PUMPDRIVERS)
             addPreferencesFromResourceIfEnabled(eopatchPumpPlugin, rootKey, config.PUMPDRIVERS)
+            addPreferencesFromResourceIfEnabled(medtrumPlugin, rootKey, config.PUMPDRIVERS)
             addPreferencesFromResource(R.xml.pref_pump, rootKey, config.PUMPDRIVERS)
             addPreferencesFromResourceIfEnabled(virtualPumpPlugin, rootKey)
             addPreferencesFromResourceIfEnabled(insulinOrefFreePeakPlugin, rootKey)
@@ -323,7 +325,7 @@ class MyPreferenceFragment : PreferenceFragmentCompat(), OnSharedPreferenceChang
             rh.gs(info.nightscout.core.utils.R.string.key_low_mark)
         )
         if (unitDependent.toList().contains(pref.key) && pref is EditTextPreference) {
-            val converted = Profile.toCurrentUnits(profileFunction, SafeParse.stringToDouble(pref.text))
+            val converted = profileUtil.valueInCurrentUnitsDetect(SafeParse.stringToDouble(pref.text))
             pref.summary = converted.toString()
         }
     }
