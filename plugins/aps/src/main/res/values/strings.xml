@@ -14,6 +14,7 @@
     <string name="key_enableSMB_with_COB" translatable="false">enableSMB_with_COB</string>
     <string name="key_enableSMB_with_temptarget" translatable="false">enableSMB_with_temptarget</string>
     <string name="key_enableSMB_after_carbs" translatable="false">enableSMB_after_carbs</string>
+    <string name="key_enableSMB_high_bg" translatable="false">enableSMB_high_bg</string>
     <string name="key_allowSMB_with_high_temptarget" translatable="false">enableSMB_with_high_temptarget</string>
     <string name="key_smb_max_minutes" translatable="false">smbmaxminutes</string>
     <string name="key_uam_smb_max_minutes" translatable="false">uamsmbmaxminutes</string>
