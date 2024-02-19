@@ -33,6 +33,7 @@ enum class BooleanKey(
     ApsUseSmb(R.string.key_openaps_use_smb, true, defaultedBySM = true), // change from default false
     ApsUseSmbWithHighTt(R.string.key_openaps_allow_smb_with_high_temp_target, false, defaultedBySM = true, dependency = R.string.key_openaps_use_smb),
     ApsUseSmbAlways(R.string.key_openaps_enable_smb_always, true, defaultedBySM = true, dependency = R.string.key_openaps_use_smb), // change from default false
+    ApsUseSMBHighBg(R.string.key_openaps_enable_high_bg, true, defaultedBySM = true, dependency = R.string.key_openaps_use_smb),
     ApsUseSmbWithCob(R.string.key_openaps_allow_smb_with_COB, true, defaultedBySM = true, dependency = R.string.key_openaps_use_smb), // change from default false
     ApsUseSmbWithLowTt(R.string.key_openaps_allow_smb_with_low_temp_target, true, defaultedBySM = true, dependency = R.string.key_openaps_use_smb), // change from default false
     ApsUseSmbAfterCarbs(R.string.key_openaps_enable_smb_after_carbs, true, defaultedBySM = true, dependency = R.string.key_openaps_use_smb), // change from default false

@@ -201,6 +201,7 @@ class OpenAPSAMAPlugin @Inject constructor(
             SMBInterval = 0, // not used
             enableSMB_with_COB = false, // not used
             enableSMB_with_temptarget = false, // not used
+            enableSMB_high_bg = false, // not used
             allowSMB_with_high_temptarget = false, // not used
             enableSMB_always = false, // not used
             enableSMB_after_carbs = false, // not used

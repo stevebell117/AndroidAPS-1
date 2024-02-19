@@ -71,10 +71,10 @@
             android:summary="@string/enable_smb_with_cob_summary"
             android:title="@string/enable_smb_with_cob" />
 
-        <app.apps.core.keys.EnableSMBHighBG
-            android:key="@string/key_enableSMB_high_bg"
-            android:summary="@string/enablesmbhighbg_summary"
-            android:title="@string/enablesmbhighbg" />
+        <app.aaps.core.keys.AdaptiveSwitchPreference
+            android:key="@string/key_openaps_enable_high_bg"
+            android:summary="@string/enable_smb_high_bg_summary"
+            android:title="@string/enable_smb_high_bg" />
 
         <app.aaps.core.keys.AdaptiveSwitchPreference
             android:key="@string/key_openaps_allow_smb_with_low_temp_target"

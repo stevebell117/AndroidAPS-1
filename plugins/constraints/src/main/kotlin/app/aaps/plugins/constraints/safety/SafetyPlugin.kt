@@ -72,12 +72,12 @@ class SafetyPlugin @Inject constructor(
     override fun isClosedLoopAllowed(value: Constraint<Boolean>): Constraint<Boolean> {
         val mode = ApsMode.fromString(preferences.get(StringKey.LoopApsMode))
         if (mode == ApsMode.OPEN) value.set(false, rh.gs(R.string.closedmodedisabledinpreferences), this)
-        if (!config.isEngineeringModeOrRelease()) {
-            if (value.value()) {
-                uiInteraction.addNotification(Notification.TOAST_ALARM, rh.gs(R.string.closed_loop_disabled_on_dev_branch), Notification.NORMAL)
-            }
-            value.set(false, rh.gs(R.string.closed_loop_disabled_on_dev_branch), this)
-        }
+        // if (!config.isEngineeringModeOrRelease()) {
+        //     if (value.value()) {
+        //         uiInteraction.addNotification(Notification.TOAST_ALARM, rh.gs(R.string.closed_loop_disabled_on_dev_branch), Notification.NORMAL)
+        //     }
+        //     value.set(false, rh.gs(R.string.closed_loop_disabled_on_dev_branch), this)
+        // }
         val pump = activePlugin.activePump
         if (!pump.isFakingTempsByExtendedBoluses && persistenceLayer.getExtendedBolusActiveAt(dateUtil.now()) != null) {
             value.set(false, rh.gs(R.string.closed_loop_disabled_with_eb), this)
