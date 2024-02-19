@@ -226,7 +226,6 @@
     <string name="overview_show_deviation_slope">Pendent de desviació</string>
     <string name="overview_show_activity">Activitat</string>
     <string name="overview_show_bgi">Impacte glucèmia</string>
-    <string name="overview_show_sensitivity">Sensibilitat</string>
     <string name="overview_show_deviations">Desviacions</string>
     <string name="overview_show_cob">Carbohidrats actius (COB)</string>
     <string name="overview_show_iob">Insulina \"a bord\" (IOB)</string>
@@ -240,7 +239,6 @@
     <string name="abs_insulin_shortname">ABS</string>
     <string name="devslope_shortname">PENDENTDESV</string>
     <string name="treatments_shortname">TRACT</string>
-    <string name="sensitivity_shortname">SENS</string>
     <string name="graph_menu_divider_header">Gràfica</string>
     <!-- Skins -->
     <string name="classic_description">Tema original</string>
@@ -250,18 +248,6 @@
     <string name="skin">Tema</string>
     <!--    Iob-->
     <string name="send_logfiles">Enviar logs del dia als desenvolupadors. Situació inesperada.</string>
-    <!--    Wear-->
-    <string name="wear_shortname">WEAR</string>
-    <string name="no_success">no funciona - si us plau comproveu al mòbil</string>
-    <string name="wear_settings">Configuració de Wear</string>
-    <string name="wearcontrol_title">Control des de rellotge</string>
-    <string name="wearcontrol_summary">Marcar objectius temporals i introduir tractaments des del rellotge.</string>
-    <string name="wear_wizard_settings_summary">Càlculs inclosos al resultat de l\'assistent:</string>
-    <string name="wear_general_settings">Configuració general</string>
-    <string name="wear_notifysmb_title">Avís d\'SMB</string>
-    <string name="wear_notifysmb_summary">Mostrar SMB al rellotge com un bolus estàndard.</string>
-    <string name="resend_all_data">Reenviar totes les dades</string>
-    <string name="open_settings_on_wear">Obrir Configuració a Wear</string>
     <!--    PersistentNotification-->
     <string name="description_persistent_notification">Va mostrant avisos amb un petit resum del que el llaç està fent</string>
     <string name="old_data">DADES ANTIGUES</string>

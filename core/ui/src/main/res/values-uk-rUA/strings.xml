@@ -23,7 +23,6 @@
     <!--    Protection-->
     <!--    Pumps -->
     <!--    Constraints-->
-    <!-- Locale -->
     <!--    Dialogs-->
     <!-- TwoMessagesDialog -->
     <!-- NumberPicker -->
@@ -35,4 +34,8 @@
     <!-- SmsCommunicator -->
     <!-- About -->
     <!--    Maintenance-->
+    <!--    Weekday-->
+    <!-- WeekdayPicker -->
+    <!--    DecimalFormatterImpl -->
+    <string name="format_insulin_units">%1$.2f од</string>
 </resources>

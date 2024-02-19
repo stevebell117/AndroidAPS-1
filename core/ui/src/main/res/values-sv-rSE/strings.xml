@@ -526,7 +526,6 @@
     <string name="limitingpercentrate">Begränsar max procent hastighet till %1$d%% pga %2$s</string>
     <string name="itmustbepositivevalue">det måste vara ett positivt värde</string>
     <string name="limitingbolus">Max bolus: %1$.1f U pga %2$s</string>
-    <!-- Locale -->
     <!--    Dialogs-->
     <string name="confirmation">Bekräftelse</string>
     <string name="message">Meddelande</string>
@@ -580,4 +579,8 @@
     <string name="cleanup_db_confirm">Vill du rensa databasen?\nDet kommer att ta bort spårade ändringar och historiska data äldre än 3 månader.</string>
     <string name="cleanup_db_confirm_sync">Vill du rensa databasen?\nDet kommer att ta bort spårade ändringar och historiska data äldre än 3 månader.\nAtt göra det kommer att påskynda full synkronisering dramatiskt.</string>
     <string name="cleared_entries">Rensade poster</string>
+    <!--    Weekday-->
+    <!-- WeekdayPicker -->
+    <!--    DecimalFormatterImpl -->
+    <string name="format_insulin_units">%1$.2fU</string>
 </resources>

@@ -2,14 +2,10 @@
 <resources>
     <string name="app_name">AAPS</string>
     <string name="label_actions_activity">AAPS</string>
-    <string name="label_watchface">AAPS</string>
     <string name="label_watchface_large">AAPS(Large)</string>
     <string name="label_watchface_big_chart">AAPS(BigChart)</string>
     <string name="label_watchface_no_chart">AAPS(NoChart)</string>
     <string name="label_watchface_circle">AAPS(Circle)</string>
-    <string name="label_watchface_v2">AAPS(v2)</string>
-    <string name="label_watchface_cockpit">AAPS(Cockpit)</string>
-    <string name="label_watchface_steampunk">AAPS(Steampunk)</string>
     <string name="label_watchface_digital_style">AAPS(DigitalStyle)</string>
     <string name="label_watchface_custom">AAPS(Personalizzato)</string>
     <string name="label_actions_tile">AAPS(azioni)</string>
@@ -44,6 +40,9 @@
     <string name="pref_show_bgi">Mostra BGI</string>
     <string name="pref_show_direction_arrow">Mostra frecce direzionali</string>
     <string name="pref_show_ago">Mostra Indietro</string>
+    <string name="pref_show_temp_basal">Mostra TBR</string>
+    <string name="pref_show_bolus">Mostra boli &amp; SMB</string>
+    <string name="pref_show_grid">Mostra griglia</string>
     <string name="pref_dark" comment="Enables dark visual theme">Scuro</string>
     <string name="pref_highlight_basals">Evidenzia basali</string>
     <string name="pref_prediction_lines">Visualizza previsioni</string>
@@ -59,7 +58,6 @@
     <string name="pref_quick_righty">Quick righty</string>
     <string name="pref_quick_lefty">Quick lefty</string>
     <string name="pref_modern_sparse">Modern Sparse</string>
-    <string name="pref_delta_granularity">Delta Granularity (Steampunk)</string>
     <string name="pref_low">Basso</string>
     <string name="pref_medium">Medio</string>
     <string name="pref_high">Alto</string>
@@ -182,8 +180,6 @@
     <string name="wear_control_no_data">Nessun dato disponibile</string>
     <string name="increment">incremento</string>
     <string name="decrement">decremento</string>
-    <string name="first_char_high">H</string>
-    <string name="first_char_low">L</string>
     <string name="abbreviation_average">media</string>
     <string name="no_iob_u">--U</string>
     <string name="no_cob_g">--g</string>
@@ -208,4 +204,17 @@
     <string name="old_warning">!vecchio!</string>
     <string name="error">!err!</string>
     <string name="pref_heartRateSampling">Frequenza cardiaca</string>
+    <string name="pref_stepsSampling">Abilita Conteggio Passi</string>
+    <string name="tile_tempt_1">Target Temporaneo 1</string>
+    <string name="tile_tempt_2">Target Temporaneo 2</string>
+    <string name="tile_tempt_3">Target Temporaneo 3</string>
+    <string name="tile_tempt_4">Target Temporaneo 4</string>
+    <string name="tile_action_1">Azione 1</string>
+    <string name="tile_action_2">Azione 2</string>
+    <string name="tile_action_3">Azione 3</string>
+    <string name="tile_action_4">Azione 4</string>
+    <string name="datalayer_notification_title">Data Layer Foreground Service</string>
+    <string name="datalayer_notification_text">AAPS è in esecuzione in primo piano. Per nascondere le notifiche vai alle opzioni Sviluppatore, notifiche app, app ammesse, seleziona AAPS, Disattiva Data Layer Foreground Service.</string>
+    <string name="on">ON</string>
+    <string name="off">OFF</string>
 </resources>
