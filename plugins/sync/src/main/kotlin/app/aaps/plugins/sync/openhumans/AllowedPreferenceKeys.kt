@@ -120,6 +120,7 @@ private val allowedKeys = """
     enableSMB_with_COB
     enableSMB_with_temptarget
     enableSMB_with_high_temptarget
+    enableSMB_high_bg
     enableSMB_always
     enableSMB_after_carbs
     smbmaxminutes
@@ -208,4 +209,5 @@ private val allowedKeys = """
     xdripstatus
     xdripstatus_detailediob
     xdripstatus_showbgi
+    enableSMB_high_bg
 """.trimIndent().split("\n").filterNot { it.isBlank() }.map { it.uppercase(Locale.getDefault()) }

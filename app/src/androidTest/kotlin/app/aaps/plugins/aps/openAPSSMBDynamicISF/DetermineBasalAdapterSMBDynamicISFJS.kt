@@ -266,6 +266,7 @@ class DetermineBasalAdapterSMBDynamicISFJS(private val scriptReader: ScriptReade
         this.profile.put("enableSMB_with_COB", smbEnabled && preferences.get(BooleanKey.ApsUseSmbWithCob))
         this.profile.put("enableSMB_with_temptarget", smbEnabled && preferences.get(BooleanKey.ApsUseSmbWithLowTt))
         this.profile.put("allowSMB_with_high_temptarget", smbEnabled && preferences.get(BooleanKey.ApsUseSmbWithHighTt))
+        this.profile.put("enableSMB_high_bg", smbEnabled && preferences.get(BooleanKey.ApsUseSMBHighBg) && advancedFiltering)
         this.profile.put("enableSMB_always", smbEnabled && preferences.get(BooleanKey.ApsUseSmbAlways) && advancedFiltering)
         this.profile.put("enableSMB_after_carbs", smbEnabled && preferences.get(BooleanKey.ApsUseSmbAfterCarbs) && advancedFiltering)
         this.profile.put("maxSMBBasalMinutes", preferences.get(IntKey.ApsMaxMinutesOfBasalToLimitSmb))

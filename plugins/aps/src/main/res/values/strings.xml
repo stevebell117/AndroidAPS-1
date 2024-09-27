@@ -68,6 +68,8 @@
     <string name="enable_smb_always_summary">Enable SMB always independently to boluses. Possible only with BG source with nice filtering of data like G5</string>
     <string name="enable_smb_after_carbs">Enable SMB after carbs</string>
     <string name="enable_smb_after_carbs_summary">Enable SMB for 6h after carbs, even with 0 COB. Possible only with BG source with nice filtering of data like G5</string>
+    <string name="enable_smb_high_bg_summary">Enable SMB when BG is "high".</string>
+    <string name="enable_smb_high_bg">Enable SMB when BG is "high".</string>
     <string name="enable_smb_with_cob">Enable SMB with COB</string>
     <string name="enable_smb_with_cob_summary">Enable SMB when there is COB active.</string>
     <string name="enable_smb_with_temp_target">Enable SMB with temp targets</string>

@@ -59,13 +59,13 @@ class VersionCheckerPlugin @Inject constructor(
     }
 
     override fun isClosedLoopAllowed(value: Constraint<Boolean>): Constraint<Boolean> {
-        checkWarning()
-        versionCheckerUtils.triggerCheckVersion()
-        if (lastCheckOlderThan(gracePeriod.veryOld.daysToMillis()))
-            value.set(false, rh.gs(R.string.very_old_version), this)
-        val endDate = sp.getLong(rh.gs(app.aaps.core.utils.R.string.key_app_expiration) + "_" + config.VERSION_NAME, 0)
-        if (endDate != 0L && dateUtil.now() > endDate)
-            value.set(false, rh.gs(R.string.application_expired), this)
+        // checkWarning()
+        // versionCheckerUtils.triggerCheckVersion()
+        // if (lastCheckOlderThan(gracePeriod.veryOld.daysToMillis()))
+        //     value.set(false, rh.gs(R.string.very_old_version), this)
+        // val endDate = sp.getLong(rh.gs(app.aaps.core.utils.R.string.key_app_expiration) + "_" + config.VERSION_NAME, 0)
+        // if (endDate != 0L && dateUtil.now() > endDate)
+        //     value.set(false, rh.gs(R.string.application_expired), this)
         return value
     }
 
@@ -110,8 +110,9 @@ class VersionCheckerPlugin @Inject constructor(
     private fun shouldWarnAgain() =
         dateUtil.now() > sp.getLong(R.string.key_last_versionchecker_plugin_warning_timestamp, 0) + WARN_EVERY
 
-    private fun lastCheckOlderThan(gracePeriod: Long): Boolean =
-        dateUtil.now() > sp.getLong(R.string.key_last_successful_version_check_timestamp, 0) + gracePeriod
+    private fun lastCheckOlderThan(gracePeriod: Long): Boolean = false
+    //private fun lastCheckOlderThan(gracePeriod: Long): Boolean =
+    //    dateUtil.now() > sp.getLong(R.string.key_last_time_this_version_detected_as_ok, 0) + gracePeriod
 
     private fun Long.daysToMillis() = TimeUnit.DAYS.toMillis(this)
 }
